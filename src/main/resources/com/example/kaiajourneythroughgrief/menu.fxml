@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.Pane?>
+
+<Pane
+        xmlns="http://javafx.com/javafx"
+        xmlns:fx="http://javafx.com/fxml"
+        fx:controller="com.example.kaiajourneythroughgrief.Menu"
+        fx:id="canvas"
+        prefWidth="1000"
+        prefHeight="740"
+        style="-fx-background-color: #07070F;">
+</Pane>

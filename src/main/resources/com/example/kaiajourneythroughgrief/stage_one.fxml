@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.control.ProgressBar?>
+
+<BorderPane
+        xmlns="http://javafx.com/javafx"
+        xmlns:fx="http://javafx.com/fxml"
+        fx:controller="com.example.kaiajourneythroughgrief.StageOne"
+        style="-fx-background-color: #07070F;"
+        prefWidth="1000" prefHeight="650">
+
+    <!-- ===== TOP: Title bar + health bar (built entirely by controller) ===== -->
+    <top>
+        <StackPane fx:id="topPanel" style="-fx-background-color: #050510;">
+            <!--
+                The ProgressBar is injected here so the controller can find it
+                via @FXML, but its position inside topPanel is managed entirely
+                in buildTitleBar() — no layout attributes needed here.
+            -->
+            <ProgressBar
+                    fx:id="healthBar"
+                    progress="0.5"
+                    prefWidth="0"
+                    prefHeight="0"
+                    visible="false"
+            />
+            <!--
+                buildTitleBar() calls topPanel.getChildren().clear() then adds
+                its own HBox, so the ProgressBar above is replaced at runtime.
+                The fx:id binding is what matters — it wires the field.
+            -->
+        </StackPane>
+    </top>
+
+    <!-- ===== CENTER: Battle area — background + characters injected by controller ===== -->
+    <center>
+        <AnchorPane fx:id="battleArea"
+                    style="-fx-background-color: #07070F;">
+            <!--
+                background.png  → added first (z-index 0) by buildBattleScene()
+                player.png      → added second, anchored left
+                enemy.png       → added third,  anchored right
+            -->
+        </AnchorPane>
+    </center>
+
+    <!-- ===== BOTTOM: Sorting game panel ===== -->
+    <bottom>
+        <StackPane
+                fx:id="bottomPanel"
+                prefHeight="160"
+                style="-fx-background-color: #050510; -fx-border-color: #1C1C30; -fx-border-width: 1 0 0 0;">
+            <!-- Canvas injected by controller -->
+        </StackPane>
+    </bottom>
+
+</BorderPane>
