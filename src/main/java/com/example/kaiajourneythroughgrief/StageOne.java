@@ -1,7 +1,6 @@
 package com.example.kaiajourneythroughgrief;
 
 import javafx.animation.AnimationTimer;
-import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.fxml.FXML;
@@ -40,7 +39,7 @@ public class StageOne implements Initializable {
 
     // ── FXML injected nodes ────────────────────────────────────────────────
     @FXML private StackPane   topPanel;
-    @FXML private ProgressBar healthBar;   // FXML-declared but hidden; real bar is battleHealthBar
+    @FXML private ProgressBar healthBar;
     @FXML private AnchorPane  battleArea;
     @FXML private StackPane   bottomPanel;
 
@@ -98,8 +97,8 @@ public class StageOne implements Initializable {
     private long           lastNanoTime  = -1;
     private boolean        gameOver      = false;
     private AnimationTimer gameLoop      = null;
-    private ProgressBar    battleHealthBar;   // the visible in-scene bar
-    private VBox           healthBarContainer; // kept so restart can reset without rebuild
+    private ProgressBar    battleHealthBar;
+    private VBox           healthBarContainer;
 
     // Sorting
     private SortMode             currentMode;
@@ -112,7 +111,7 @@ public class StageOne implements Initializable {
     private int     dragIndex   = -1;
     private double  dragOffsetX, dragOffsetY, dragX, dragY;
 
-    // Layout — computed once per canvas resize, reused everywhere
+    // Layout
     private double boxWidth;
     private int    maxPerRow;
 
@@ -136,8 +135,6 @@ public class StageOne implements Initializable {
         buildSortingCanvas();
         startGameLoop();
     }
-
-    // ── Styles ───────────────────────────────────────────────────────────
 
     private void styleScene() {
         battleArea.setStyle("-fx-background-color: " + C_CANVAS_BG + ";");
@@ -219,7 +216,7 @@ public class StageOne implements Initializable {
             Scene scene = new Scene(loader.load());
             ((Stage) battleArea.getScene().getWindow()).setScene(scene);
         } catch (Exception e) {
-            System.err.println("[Stage_One] Back failed: " + e.getMessage());
+            System.err.println("[StageOne] Back failed: " + e.getMessage());
         }
     }
 
@@ -233,7 +230,6 @@ public class StageOne implements Initializable {
     // =========================================================================
 
     private void buildBattleScene() {
-        // Background
         ImageView bg = loadImage(IMG_BACKGROUND, null, null, false);
         if (bg != null) {
             bg.fitWidthProperty().bind(battleArea.widthProperty());
@@ -246,30 +242,21 @@ public class StageOne implements Initializable {
             battleArea.getChildren().add(bg);
         }
 
-        // Player (left)
         VBox playerBox = buildCharacterNode(
                 loadImage(IMG_PLAYER, CHAR_WIDTH, CHAR_HEIGHT, true), "PLAYER", true);
         AnchorPane.setLeftAnchor(playerBox,   80.0);
         AnchorPane.setBottomAnchor(playerBox, 40.0);
         battleArea.getChildren().add(playerBox);
 
-        // Enemy (right)
         VBox enemyBox = buildCharacterNode(
                 loadImage(IMG_ENEMY, CHAR_WIDTH, CHAR_HEIGHT, true), "ENEMY", false);
         AnchorPane.setRightAnchor(enemyBox,   80.0);
         AnchorPane.setBottomAnchor(enemyBox,  40.0);
         battleArea.getChildren().add(enemyBox);
 
-        // Health bar overlay — built once, reused on restart
         buildInSceneHealthBar();
     }
 
-    // ── Health bar ────────────────────────────────────────────────────────
-
-    /**
-     * Creates the health bar container once and stores it in {@code healthBarContainer}.
-     * On restart we just reset the progress value — no rebuild needed.
-     */
     private void buildInSceneHealthBar() {
         battleHealthBar = new ProgressBar(playerMeter);
         battleHealthBar.setPrefWidth(340);
@@ -307,7 +294,6 @@ public class StageOne implements Initializable {
         battleArea.getChildren().add(healthBarContainer);
     }
 
-    /** Fixed two-colour tug-of-war style — never changes after first call. */
     private void applyHealthBarStyle() {
         battleHealthBar.setStyle(
                 "-fx-accent: "                   + C_PLAYER_GREEN + ";" +
@@ -348,7 +334,7 @@ public class StageOne implements Initializable {
         try {
             URL res = getClass().getResource(filename);
             if (res == null) return null;
-            Image img = new Image(res.toExternalForm(), false); // false = required for GIF animation
+            Image img = new Image(res.toExternalForm(), false);
             ImageView iv = new ImageView(img);
             if (fitWidth  != null) iv.setFitWidth(fitWidth);
             if (fitHeight != null) iv.setFitHeight(fitHeight);
@@ -356,7 +342,7 @@ public class StageOne implements Initializable {
             iv.setSmooth(true);
             return iv;
         } catch (Exception e) {
-            System.err.println("[Stage_One] Could not load: " + filename + " — " + e.getMessage());
+            System.err.println("[StageOne] Could not load: " + filename + " — " + e.getMessage());
             return null;
         }
     }
@@ -389,10 +375,6 @@ public class StageOne implements Initializable {
     // HEALTH HELPERS
     // =========================================================================
 
-    /**
-     * Single method that clamps, stores, and pushes the meter value to the bar.
-     * All health changes go through here — no scattered setProgress() calls.
-     */
     private void setMeter(double value) {
         playerMeter = Math.max(0.0, Math.min(1.0, value));
         if (battleHealthBar != null) battleHealthBar.setProgress(playerMeter);
@@ -412,6 +394,10 @@ public class StageOne implements Initializable {
         canvas.setOnMousePressed(null);
         canvas.setOnMouseDragged(null);
         canvas.setOnMouseReleased(null);
+
+        // ── ONLY CHANGE: save progress on victory ─────────────────────────
+        if (won) SaveManager.unlockNext("stage1");
+
         showEndOverlay(won);
     }
 
@@ -469,7 +455,7 @@ public class StageOne implements Initializable {
         popup.setOnMouseClicked(e -> e.consume());
         battleArea.getChildren().add(centred);
 
-        FadeTransition ft = new FadeTransition(Duration.millis(350), popup);
+        javafx.animation.FadeTransition ft = new javafx.animation.FadeTransition(Duration.millis(350), popup);
         ft.setFromValue(0.0);
         ft.setToValue(1.0);
         ft.play();
@@ -498,14 +484,10 @@ public class StageOne implements Initializable {
     // =========================================================================
 
     private void restartGame() {
-        // Remove only the end-overlay StackPane — background, characters, and
-        // health bar container stay in place (no rebuild needed)
         battleArea.getChildren().removeIf(n -> n instanceof StackPane);
-
         gameOver     = false;
         lastNanoTime = -1;
-        setMeter(0.5);               // resets playerMeter + pushes to bar in one call
-
+        setMeter(0.5);
         setupMouseHandlers();
         generateRandomLevel();
         drawArray();
@@ -521,13 +503,12 @@ public class StageOne implements Initializable {
         gc     = canvas.getGraphicsContext2D();
 
         generateRandomLevel();
-        recalcLayout();   // initialise boxWidth / maxPerRow before first draw
+        recalcLayout();
         drawArray();
         setupMouseHandlers();
 
         bottomPanel.getChildren().add(canvas);
 
-        // Keep canvas width in sync; recalc layout on resize
         bottomPanel.widthProperty().addListener((obs, oldW, newW) -> {
             canvas.setWidth(newW.doubleValue());
             recalcLayout();
@@ -574,7 +555,6 @@ public class StageOne implements Initializable {
         return getValue(pos) == sorted[pos];
     }
 
-    /** Returns a sorted snapshot of current values without mutating levelData. */
     private int[] sortedSnapshot(boolean ascending) {
         int[] vals = new int[NUMBER_COUNT];
         for (int i = 0; i < NUMBER_COUNT; i++) vals[i] = getValue(i);
@@ -599,14 +579,9 @@ public class StageOne implements Initializable {
     }
 
     // =========================================================================
-    // LAYOUT  (computed once, reused every frame)
+    // LAYOUT
     // =========================================================================
 
-    /**
-     * Recalculates {@code maxPerRow} and {@code boxWidth} from the current
-     * canvas width. Call this once on init and again on any resize.
-     * All rendering methods read these fields directly — no per-call recompute.
-     */
     private void recalcLayout() {
         double usable = canvas.getWidth() - MARGIN_X * 2;
         maxPerRow = Math.max(1, (int) ((usable + SPACING) / (80 + SPACING)));
@@ -622,14 +597,13 @@ public class StageOne implements Initializable {
         double totalH    = totalRows * BOX_HEIGHT + (totalRows - 1) * SPACING;
         double startY    = (canvas.getHeight() - totalH) / 2.0 + 16;
 
-        // Actual items in this specific row (last row may be shorter)
         int itemsInRow = Math.min(maxPerRow, NUMBER_COUNT - row * maxPerRow);
         double rowWidth = itemsInRow * boxWidth + (itemsInRow - 1) * SPACING;
         double startX   = (canvas.getWidth() - rowWidth) / 2.0;
 
         return new double[]{
                 startX + col * (boxWidth + SPACING),
-                startY + row * (BOX_HEIGHT  + SPACING)
+                startY + row * (BOX_HEIGHT + SPACING)
         };
     }
 
@@ -697,7 +671,6 @@ public class StageOne implements Initializable {
     // RENDERING
     // =========================================================================
 
-    /** Draws the canvas header (background + mode label). Shared by drawArray + animation. */
     private void drawCanvasHeader() {
         gc.setFill(Color.web(C_TITLE_BAR));
         gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
@@ -786,7 +759,7 @@ public class StageOne implements Initializable {
             timeline.getKeyFrames().add(new KeyFrame(
                     total.multiply(i / (double) SWAP_FRAMES),
                     e -> {
-                        drawCanvasHeader();   // reuses shared header — no duplication
+                        drawCanvasHeader();
                         for (int j = 0; j < NUMBER_COUNT; j++) {
                             if (j == from || j == to) continue;
                             double[] p = boxPosition(j);

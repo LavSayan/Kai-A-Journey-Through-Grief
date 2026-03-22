@@ -4,14 +4,17 @@ import javafx.animation.*;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.effect.GaussianBlur;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.*;
 import javafx.scene.shape.*;
 import javafx.scene.text.*;
-import javafx.scene.control.Label;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
@@ -224,30 +227,29 @@ public class Menu implements Initializable {
     // =========================================================================
 
     private void drawMenuButtons() {
-        double startY = H * 0.595;
-        double gap    = 58;
+        double startY   = H * 0.595;
+        double gap      = 58;
+        boolean hasProgress = SaveManager.hasProgress();
 
-        String[][] buttons = {
-                { "BEGIN JOURNEY",  "▶",  C_COMPLETION,  "play"   },
-                { "CONTINUE",       "↺",  C_ACTIVE,      "continue"},
-                { "QUIT",           "✕",  "#AF0000",     "quit"   },
-        };
+        // BEGIN JOURNEY — always active
+        buildMenuButton("BEGIN JOURNEY", "▶", C_COMPLETION, "play",
+                W / 2.0, startY, 0, true);
 
-        for (int i = 0; i < buttons.length; i++) {
-            buildMenuButton(
-                    buttons[i][0],
-                    buttons[i][1],
-                    buttons[i][2],
-                    buttons[i][3],
-                    W / 2.0,
-                    startY + i * gap,
-                    i * 120   // stagger delay ms
-            );
-        }
+        // CONTINUE — only active if progress exists, locked/dimmed otherwise
+        buildMenuButton("CONTINUE", "↺", hasProgress ? C_ACTIVE : "#1C1C30",
+                "continue", W / 2.0, startY + gap, 120, hasProgress);
+
+        // QUIT — always active
+        buildMenuButton("QUIT", "✕", "#AF0000", "quit",
+                W / 2.0, startY + gap * 2, 240, true);
     }
 
+    /**
+     * @param active  true = clickable with hover; false = locked/dimmed, no interaction
+     */
     private void buildMenuButton(String label, String icon, String colorHex,
-                                 String action, double cx, double cy, long delayMs) {
+                                 String action, double cx, double cy,
+                                 long delayMs, boolean active) {
         double btnW = 280;
         double btnH = 42;
         double bx   = cx - btnW / 2.0;
@@ -257,55 +259,58 @@ public class Menu implements Initializable {
         Rectangle bg = new Rectangle(bx, by, btnW, btnH);
         bg.setArcWidth(4);
         bg.setArcHeight(4);
-        bg.setFill(Color.web(C_TITLE_BAR, 0.85));
-        bg.setStroke(Color.web(C_BAND_DIV, 0.8));
+        bg.setFill(Color.web(C_TITLE_BAR, active ? 0.85 : 0.4));
+        bg.setStroke(Color.web(active ? C_BAND_DIV : "#111120", 0.8));
         bg.setStrokeWidth(1);
 
         // Left accent bar
         Rectangle accent = new Rectangle(bx, by, 3, btnH);
         accent.setArcWidth(3);
         accent.setArcHeight(3);
-        accent.setFill(Color.web(colorHex, 0.7));
+        accent.setFill(Color.web(colorHex, active ? 0.7 : 0.2));
 
         // Icon label — Georgia
-        Label iconLbl = new Label(icon);
+        Label iconLbl = new Label(active ? icon : "🔒");
         iconLbl.setFont(Font.font("Georgia", 14));
-        iconLbl.setTextFill(Color.web(colorHex, 0.85));
+        iconLbl.setTextFill(Color.web(colorHex, active ? 0.85 : 0.25));
         iconLbl.setLayoutX(bx + 18);
         iconLbl.setLayoutY(by + 11);
 
         // Text label — Courier New Bold
         Label textLbl = new Label(label);
         textLbl.setFont(Font.font("Courier New", FontWeight.BOLD, 12));
-        textLbl.setTextFill(Color.web(C_ACTIVE, 0.85));
+        textLbl.setTextFill(Color.web(active ? C_ACTIVE : "#2A2A3A", active ? 0.85 : 1.0));
         textLbl.setLayoutX(bx + 44);
         textLbl.setLayoutY(by + 12);
 
         // Hit area
         Rectangle hit = new Rectangle(bx, by, btnW, btnH);
         hit.setFill(Color.TRANSPARENT);
-        hit.setStyle("-fx-cursor: hand;");
 
-        // Hover effects
-        hit.setOnMouseEntered(e -> {
-            bg.setFill(Color.web(C_BAND_DIV, 0.95));
-            bg.setStroke(Color.web(colorHex, 0.6));
-            accent.setFill(Color.web(colorHex, 1.0));
-            textLbl.setTextFill(Color.web(colorHex));
-            iconLbl.setTextFill(Color.web(colorHex));
-            bg.setEffect(new DropShadow(12, Color.web(colorHex, 0.35)));
-        });
-        hit.setOnMouseExited(e -> {
-            bg.setFill(Color.web(C_TITLE_BAR, 0.85));
-            bg.setStroke(Color.web(C_BAND_DIV, 0.8));
-            accent.setFill(Color.web(colorHex, 0.7));
-            textLbl.setTextFill(Color.web(C_ACTIVE, 0.85));
-            iconLbl.setTextFill(Color.web(colorHex, 0.85));
-            bg.setEffect(null);
-        });
-        hit.setOnMouseClicked(e -> handleMenuAction(action));
+        if (active) {
+            hit.setStyle("-fx-cursor: hand;");
+            hit.setOnMouseEntered(e -> {
+                bg.setFill(Color.web(C_BAND_DIV, 0.95));
+                bg.setStroke(Color.web(colorHex, 0.6));
+                accent.setFill(Color.web(colorHex, 1.0));
+                textLbl.setTextFill(Color.web(colorHex));
+                iconLbl.setTextFill(Color.web(colorHex));
+                bg.setEffect(new DropShadow(12, Color.web(colorHex, 0.35)));
+            });
+            hit.setOnMouseExited(e -> {
+                bg.setFill(Color.web(C_TITLE_BAR, 0.85));
+                bg.setStroke(Color.web(C_BAND_DIV, 0.8));
+                accent.setFill(Color.web(colorHex, 0.7));
+                textLbl.setTextFill(Color.web(C_ACTIVE, 0.85));
+                iconLbl.setTextFill(Color.web(colorHex, 0.85));
+                bg.setEffect(null);
+            });
+            hit.setOnMouseClicked(e -> handleMenuAction(action));
+        } else {
+            // Locked — no cursor change, no hover, no click
+            hit.setStyle("-fx-cursor: default;");
+        }
 
-        // Fade-in stagger animation
         javafx.scene.Group btnGroup = new javafx.scene.Group(bg, accent, iconLbl, textLbl, hit);
         btnGroup.setOpacity(0);
         canvas.getChildren().add(btnGroup);
@@ -323,23 +328,158 @@ public class Menu implements Initializable {
 
     private void handleMenuAction(String action) {
         switch (action) {
-            case "play"     -> navigateTo("level_screen.fxml");
+            case "play" -> {
+                if (SaveManager.hasProgress()) {
+                    // Progress exists — warn before wiping
+                    showNewGameWarning();
+                } else {
+                    // No progress — start fresh with no warning
+                    navigateTo("level_screen.fxml");
+                }
+            }
             case "continue" -> navigateTo("level_screen.fxml");
-            case "quit"     -> {
+            case "quit" -> {
                 MusicPlayer.getInstance().fadeOutAndStop(600);
-                javafx.animation.PauseTransition pause =
-                        new javafx.animation.PauseTransition(javafx.util.Duration.millis(650));
+                PauseTransition pause = new PauseTransition(Duration.millis(650));
                 pause.setOnFinished(e -> javafx.application.Platform.exit());
                 pause.play();
             }
         }
     }
 
+    // =========================================================================
+    // WARNING CARD
+    // =========================================================================
+
+    private void showNewGameWarning() {
+        String warningColor = "#AF0000";   // dark red — signals danger
+
+        // Full-screen backdrop
+        Rectangle backdrop = new Rectangle(W, H);
+        backdrop.setFill(Color.web("#000000", 0.82));
+
+        // Ambient red orb
+        Circle orb = new Circle(W / 2, H / 2, 280);
+        orb.setFill(Color.web(warningColor, 0.06));
+        orb.setEffect(new GaussianBlur(80));
+
+        // Card
+        double cardW = 440;
+        VBox card = new VBox(16);
+        card.setAlignment(Pos.CENTER);
+        card.setMaxWidth(cardW);
+        card.setPrefWidth(cardW);
+        card.setStyle(
+                "-fx-background-color: #07070E;" +
+                        "-fx-border-color: " + warningColor + ";" +
+                        "-fx-border-width: 1;" +
+                        "-fx-border-radius: 6;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-padding: 36 44 32 44;"
+        );
+        card.setEffect(new DropShadow(24, Color.web(warningColor, 0.4)));
+
+        // Warning eyebrow — Courier New
+        Label eyebrow = new Label("WARNING");
+        eyebrow.setFont(Font.font("Courier New", FontWeight.BOLD, 9));
+        eyebrow.setTextFill(Color.web(warningColor, 0.8));
+        eyebrow.setStyle("-fx-letter-spacing: 3;");
+
+        // Title — Georgia Bold
+        Label titleLbl = new Label("Begin a New Journey?");
+        titleLbl.setFont(Font.font("Georgia", FontWeight.BOLD, 26));
+        titleLbl.setTextFill(Color.web("#D8D8EC"));
+        titleLbl.setEffect(new DropShadow(10, Color.web("#000000", 0.9)));
+
+        // Divider
+        Rectangle divider = new Rectangle(cardW - 88, 1);
+        divider.setFill(Color.web(warningColor, 0.3));
+
+        // Warning message — Georgia Italic
+        Label msgLbl = new Label("Your current progress will be erased.\nThis cannot be undone.");
+        msgLbl.setFont(Font.font("Georgia", FontPosture.ITALIC, 13));
+        msgLbl.setTextFill(Color.web("#5E5E78"));
+        msgLbl.setWrapText(true);
+        msgLbl.setMaxWidth(cardW - 88);
+        msgLbl.setAlignment(Pos.CENTER);
+
+        // Buttons
+        Button startFreshBtn   = makeWarningButton("▶  START FRESH",   warningColor, true);
+        Button keepProgressBtn = makeWarningButton("←  KEEP PROGRESS", "#3A3A56",    false);
+
+        VBox btnRow = new VBox(10, startFreshBtn, keepProgressBtn);
+        btnRow.setAlignment(Pos.CENTER);
+
+        card.getChildren().addAll(eyebrow, titleLbl, divider, msgLbl, btnRow);
+        card.setLayoutX(W / 2 - cardW / 2);
+
+        Pane overlay = new Pane(backdrop, orb, card);
+        card.layoutBoundsProperty().addListener((obs, oldB, newB) -> {
+            if (newB.getHeight() > 0) card.setLayoutY((H - newB.getHeight()) / 2.0);
+        });
+        canvas.getChildren().add(overlay);
+
+        // Fade in
+        overlay.setOpacity(0);
+        FadeTransition fadeIn = new FadeTransition(Duration.millis(280), overlay);
+        fadeIn.setFromValue(0.0);
+        fadeIn.setToValue(1.0);
+        fadeIn.play();
+
+        // START FRESH — wipe save then navigate
+        startFreshBtn.setOnAction(e -> {
+            dismissOverlay(overlay);
+            SaveManager.reset();
+            navigateTo("level_screen.fxml");
+        });
+
+        // KEEP PROGRESS — just dismiss
+        keepProgressBtn.setOnAction(e -> dismissOverlay(overlay));
+
+        // Backdrop click also dismisses
+        backdrop.setOnMouseClicked(e -> dismissOverlay(overlay));
+        card.setOnMouseClicked(e -> e.consume());
+    }
+
+    private Button makeWarningButton(String label, String colorHex, boolean isPrimary) {
+        Button btn = new Button(label);
+        btn.setFont(Font.font("Courier New", FontWeight.BOLD, 11));
+        btn.setTextFill(Color.web(isPrimary ? colorHex : "#3A3A56"));
+        btn.setPrefWidth(240);
+
+        String base  = "-fx-background-color: transparent;" +
+                "-fx-border-color: " + colorHex + ";" +
+                "-fx-border-width: 1;-fx-border-radius: 4;" +
+                "-fx-padding: 10 0;-fx-cursor: hand;";
+        String hover = "-fx-background-color: " + colorHex + "22;" +
+                "-fx-border-color: " + colorHex + ";" +
+                "-fx-border-width: 1;-fx-border-radius: 4;" +
+                "-fx-padding: 10 0;-fx-cursor: hand;";
+
+        btn.setStyle(base);
+        btn.setOnMouseEntered(e -> {
+            btn.setStyle(hover);
+            btn.setTextFill(Color.web(isPrimary ? "#FFFFFF" : colorHex));
+        });
+        btn.setOnMouseExited(e -> {
+            btn.setStyle(base);
+            btn.setTextFill(Color.web(isPrimary ? colorHex : "#3A3A56"));
+        });
+        return btn;
+    }
+
+    private void dismissOverlay(Pane overlay) {
+        FadeTransition fadeOut = new FadeTransition(Duration.millis(200), overlay);
+        fadeOut.setToValue(0.0);
+        fadeOut.setOnFinished(ev -> canvas.getChildren().remove(overlay));
+        fadeOut.play();
+    }
+
     private void navigateTo(String fxmlFile) {
         try {
             URL resource = getClass().getResource(fxmlFile);
             if (resource == null) {
-                System.err.println("[MenuController] FXML not found: " + fxmlFile);
+                System.err.println("[Menu] FXML not found: " + fxmlFile);
                 return;
             }
             FXMLLoader loader = new FXMLLoader(resource);
@@ -347,7 +487,7 @@ public class Menu implements Initializable {
             Stage stage = (Stage) canvas.getScene().getWindow();
             stage.setScene(scene);
         } catch (Exception e) {
-            System.err.println("[MenuController] Navigation failed: " + e.getMessage());
+            System.err.println("[Menu] Navigation failed: " + e.getMessage());
         }
     }
 
@@ -356,7 +496,7 @@ public class Menu implements Initializable {
     // =========================================================================
 
     private void drawVersionTag() {
-        Label ver = new Label("v0.1  —  ARRAY COMBAT");
+        Label ver = new Label("v0.1  —  Kai: A Journey Through Grief");
         ver.setFont(Font.font("Courier New", 8));
         ver.setTextFill(Color.web(C_META, 0.6));
         double vw = measureText(ver.getText(), ver.getFont());

@@ -44,14 +44,7 @@ public class LevelScreen implements Initializable {
 
     @FXML private Pane canvas;
 
-    // ── Level status ───────────────────────────────────────────────────────
-    private static final Map<String, String> LEVEL_STATUS = new LinkedHashMap<>() {{
-        put("stage1", "unlocked");
-        put("stage2", "locked");
-        put("stage3", "locked");
-        put("stage4", "locked");
-        put("stage5", "locked");
-    }};
+    private Map<String, String> LEVEL_STATUS;
 
     // ── Stage → FXML mapping ───────────────────────────────────────────────
     private static final Map<String, String> STAGE_FXML = new LinkedHashMap<>() {{
@@ -96,7 +89,10 @@ public class LevelScreen implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        // Continue (or start) background music — seamless if coming from menu
+        // Load saved progress first
+        LEVEL_STATUS = SaveManager.load();
+
+        // Music path matches Menu.java exactly
         MusicPlayer.getInstance().play("assets/bgmusic.mp3");
 
         drawBackground();
@@ -335,26 +331,6 @@ public class LevelScreen implements Initializable {
     // STAGE INTRO CARD
     // =========================================================================
 
-    /**
-     * Shows a full-screen intro card styled with the stage's theme color.
-     * Layout:
-     *   ┌─────────────────────────────────────────┐
-     *   │  [stage color glow overlay]             │
-     *   │                                         │
-     *   │       DENIAL          ← eyebrow         │
-     *   │  The Forest Frozen    ← title           │
-     *   │       in Fog                            │
-     *   │  ─────────────────                      │
-     *   │  ENEMY                                  │
-     *   │  Preservers                             │
-     *   │  Ice constructs that...                 │
-     *   │                                         │
-     *   │    [ ENTER ]   [ CANCEL ]               │
-     *   └─────────────────────────────────────────┘
-     *
-     * Pressing ENTER fades the whole screen to black then loads the stage FXML.
-     * Pressing CANCEL dismisses the card with a fade-out.
-     */
     private void showIntroCard(String stageId, int stageNum,
                                String title, String stageName,
                                String colorHex, String darkHex,
