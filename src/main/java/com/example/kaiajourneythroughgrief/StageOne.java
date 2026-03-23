@@ -1,6 +1,7 @@
 package com.example.kaiajourneythroughgrief;
 
 import javafx.animation.AnimationTimer;
+import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.fxml.FXML;
@@ -39,7 +40,7 @@ public class StageOne implements Initializable {
 
     // ── FXML injected nodes ────────────────────────────────────────────────
     @FXML private StackPane   topPanel;
-    @FXML private ProgressBar healthBar;
+    @FXML private ProgressBar healthBar;   // FXML-declared but hidden; real bar is battleHealthBar
     @FXML private AnchorPane  battleArea;
     @FXML private StackPane   bottomPanel;
 
@@ -426,17 +427,25 @@ public class StageOne implements Initializable {
         Rectangle divider = new Rectangle(260, 1);
         divider.setFill(Color.web(C_BAND_DIVIDER));
 
-        Button playAgainBtn = makeOverlayButton("Play Again", accentColor);
+        Button playAgainBtn = makeOverlayButton("↺  Play Again", accentColor);
         playAgainBtn.setOnAction(e -> restartGame());
 
         Label hint = new Label("click backdrop to dismiss");
         hint.setFont(Font.font("Courier New", 9));
         hint.setTextFill(Color.web(C_META_TEXT));
 
-        VBox popup = new VBox(16, eyebrow, titleLabel, subLabel, divider, playAgainBtn, hint);
+        VBox popup = new VBox(16, eyebrow, titleLabel, subLabel, divider);
+
+        if (won) {
+            // ── Next Stage button — only shown on victory ──────────────────
+            Button nextStageBtn = makeOverlayButton("▶  Next Stage", C_COMPLETION);
+            nextStageBtn.setOnAction(e -> navigateToNextStage());
+            popup.getChildren().add(nextStageBtn);
+        }
+
+        popup.getChildren().addAll(playAgainBtn, hint);
         popup.setAlignment(Pos.CENTER);
         popup.setMaxWidth(400);
-        popup.setMaxHeight(260);
         popup.setStyle(
                 "-fx-background-color: " + C_CARD_BG + ";" +
                         "-fx-padding: 32 36 28 36;" +
@@ -459,6 +468,42 @@ public class StageOne implements Initializable {
         ft.setFromValue(0.0);
         ft.setToValue(1.0);
         ft.play();
+    }
+
+    /** Fades to black then loads stage_two.fxml. */
+    private void navigateToNextStage() {
+        // Fade screen to black first for a smooth transition
+        Rectangle blackout = new Rectangle();
+        blackout.widthProperty().bind(battleArea.widthProperty());
+        blackout.heightProperty().bind(battleArea.heightProperty());
+        blackout.setFill(Color.BLACK);
+        blackout.setOpacity(0);
+        AnchorPane.setTopAnchor(blackout,    0.0);
+        AnchorPane.setBottomAnchor(blackout, 0.0);
+        AnchorPane.setLeftAnchor(blackout,   0.0);
+        AnchorPane.setRightAnchor(blackout,  0.0);
+        battleArea.getChildren().add(blackout);
+
+        javafx.animation.FadeTransition toBlack =
+                new javafx.animation.FadeTransition(Duration.millis(600), blackout);
+        toBlack.setFromValue(0.0);
+        toBlack.setToValue(1.0);
+        toBlack.setOnFinished(ev -> {
+            try {
+                URL resource = getClass().getResource(
+                        "/com/example/kaiajourneythroughgrief/stage_two.fxml");
+                if (resource == null) {
+                    System.err.println("[StageOne] stage_two.fxml not found");
+                    return;
+                }
+                FXMLLoader loader = new FXMLLoader(resource);
+                Scene scene = new Scene(loader.load());
+                ((Stage) battleArea.getScene().getWindow()).setScene(scene);
+            } catch (Exception ex) {
+                System.err.println("[StageOne] Failed to load next stage: " + ex.getMessage());
+            }
+        });
+        toBlack.play();
     }
 
     private Button makeOverlayButton(String label, String accentColor) {
