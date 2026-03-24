@@ -64,20 +64,20 @@ public class LevelScreen implements Initializable {
 
     private static final Object[][] STAGES = {
             { "stage1", "I",   "The Forest Frozen in Fog",    "DENIAL",
-                    "#ADD8E6", "#1A4A5A", "Preservers",
-                    "Ice constructs that freeze memories in amber stillness." },
+                    "#ADD8E6", "#1A4A5A", "Enemy1",
+                    "Description1" },
             { "stage2", "II",  "The City of Shattered Glass", "ANGER",
-                    "#DC143C", "#5A0010", "Reflections",
-                    "Mirror-clones that hurl your rage back at you." },
+                    "#DC143C", "#5A0010", "Enemy2",
+                    "Description2" },
             { "stage3", "III", "The Temple of Endless Doors", "BARGAINING",
-                    "#DAA520", "#5A4000", "The Tethered",
-                    "Phantom chains from alternate realities left unchosen." },
+                    "#DAA520", "#5A4000", "Enemy3",
+                    "Description3" },
             { "stage4", "IV",  "The Ocean of Still Water",    "DEPRESSION",
-                    "#6A2FBF", "#18002E", "The Drowned",
-                    "Waterlogged figures dragging you into silent depths." },
+                    "#6A2FBF", "#18002E", "Enemy4",
+                    "Description4" },
             { "stage5", "V",   "The Garden at Dawn",          "ACCEPTANCE",
-                    "#FFD700", "#5A4400", "Thorned Guardians",
-                    "Plant creatures that test if you are truly ready." },
+                    "#FFD700", "#5A4400", "Enemy5",
+                    "Description5" },
     };
 
     // ── Guard: prevents double-clicking during a transition ────────────────
