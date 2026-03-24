@@ -36,7 +36,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.ResourceBundle;
 
-public class StageOne implements Initializable {
+public class StageTwo implements Initializable {
 
     // ── FXML injected nodes ────────────────────────────────────────────────
     @FXML private StackPane   topPanel;
@@ -65,18 +65,19 @@ public class StageOne implements Initializable {
     private static final String C_ENEMY_RED    = "#af0000";
     private static final String C_ASCENDING    = "#ADD8E6";
     private static final String C_DESCENDING   = "#DC143C";
+    private static final String C_LOCKED       = "#9370DB";
 
     // ── Assets ────────────────────────────────────────────────────────────
-    private static final String IMG_BACKGROUND = "assets/stage1/background.png";
-    private static final String IMG_PLAYER     = "assets/stage1/player.gif";
-    private static final String IMG_ENEMY      = "assets/stage1/enemy.gif";
+    private static final String IMG_BACKGROUND = "assets/stage2/background.png";
+    private static final String IMG_PLAYER     = "assets/stage2/player.gif";
+    private static final String IMG_ENEMY      = "assets/stage2/enemy.gif";
 
     // ── Character size ────────────────────────────────────────────────────
     private static final double CHAR_WIDTH  = 300;
     private static final double CHAR_HEIGHT = 300;
 
     // ── Sorting config ────────────────────────────────────────────────────
-    private static final int    NUMBER_COUNT = 8;
+    private static final int    NUMBER_COUNT = 10;
     private static final double BOX_HEIGHT   = 56;
     private static final double SPACING      = 8;
     private static final double MARGIN_X     = 20;
@@ -88,6 +89,10 @@ public class StageOne implements Initializable {
     // ── Health ────────────────────────────────────────────────────────────
     private static final double DRAIN_PER_SECOND = 0.04;
     private static final double GAIN_PER_CORRECT = 0.08;
+
+    // ── Locked tiles config ────────────────────────────────────────────────
+    private static final int    LOCKED_TILES_INITIAL = 4;  // How many tiles start locked
+    private static final int    CORRECT_COUNT_TO_UNLOCK = 2; // How many correct placements to unlock one tile
 
     // =========================================================================
     // ★ DEVELOPER SETTING — Arrays to solve before victory
@@ -107,9 +112,11 @@ public class StageOne implements Initializable {
     private VBox           healthBarContainer;
 
     // ── Array solve counter ───────────────────────────────────────────────
-    // Incremented each time the player completes a sorted array.
-    // Victory triggers when this reaches ARRAYS_TO_WIN.
     private int arraysSolved = 0;
+
+    // ── Locked tiles ───────────────────────────────────────────────────────
+    private boolean[]        tileIsLocked   = new boolean[NUMBER_COUNT];
+    private int              correctsPending = 0; // Counts towards next unlock
 
     // Sorting
     private SortMode             currentMode;
@@ -162,12 +169,12 @@ public class StageOne implements Initializable {
     // =========================================================================
 
     private void buildTitleBar() {
-        Label eyebrow = new Label("STAGE 1");
+        Label eyebrow = new Label("STAGE 2");
         eyebrow.setFont(Font.font("Courier New", FontWeight.BOLD, 8));
         eyebrow.setTextFill(Color.web(C_META_TEXT));
         eyebrow.setStyle("-fx-letter-spacing: 2;");
 
-        Label title = new Label("The Forest Frozen in Fog");
+        Label title = new Label("The Garden's Hidden Heart");
         title.setFont(Font.font("Georgia", FontWeight.BOLD, 15));
         title.setTextFill(Color.web(C_TITLE_TEXT));
         title.setEffect(new DropShadow(8, Color.web("#000000", 0.9)));
@@ -227,7 +234,7 @@ public class StageOne implements Initializable {
             Scene scene = new Scene(loader.load());
             ((Stage) battleArea.getScene().getWindow()).setScene(scene);
         } catch (Exception e) {
-            System.err.println("[StageOne] Back failed: " + e.getMessage());
+            System.err.println("[StageTwo] Back failed: " + e.getMessage());
         }
     }
 
@@ -353,7 +360,7 @@ public class StageOne implements Initializable {
             iv.setSmooth(true);
             return iv;
         } catch (Exception e) {
-            System.err.println("[StageOne] Could not load: " + filename + " — " + e.getMessage());
+            System.err.println("[StageTwo] Could not load: " + filename + " — " + e.getMessage());
             return null;
         }
     }
@@ -381,10 +388,8 @@ public class StageOne implements Initializable {
                 if (!animating && !dragging && isSorted()) {
                     arraysSolved++;
                     if (arraysSolved >= ARRAYS_TO_WIN) {
-                        // Player has solved enough arrays — victory
                         triggerGameOver(true);
                     } else {
-                        // More arrays to go — generate a new one and keep playing
                         generateRandomLevel();
                         recalcLayout();
                         drawArray();
@@ -413,8 +418,6 @@ public class StageOne implements Initializable {
     // PROGRESS INDICATOR
     // =========================================================================
     private void drawProgressIndicator() {
-        // The counter is baked into the next drawArray() call via drawCanvasHeader(),
-        // so we just need to trigger a redraw — the header reads arraysSolved directly.
         drawArray();
     }
 
@@ -429,7 +432,7 @@ public class StageOne implements Initializable {
         canvas.setOnMouseDragged(null);
         canvas.setOnMouseReleased(null);
 
-        if (won) SaveManager.unlockNext("stage1");
+        if (won) SaveManager.unlockNext("stage2");
 
         showEndOverlay(won);
     }
@@ -452,7 +455,7 @@ public class StageOne implements Initializable {
         titleLabel.setTextFill(Color.web(won ? C_COMPLETION : C_ENEMY_RED));
         titleLabel.setEffect(new DropShadow(14, Color.web(won ? C_COMPLETION : C_ENEMY_RED, 0.35)));
 
-        Label subLabel = new Label(won ? "The array has been sorted." : "The enemy overcame you.");
+        Label subLabel = new Label(won ? "All secrets revealed." : "The enemy overcame you.");
         subLabel.setFont(Font.font("Georgia", FontPosture.ITALIC, 13));
         subLabel.setTextFill(Color.web(C_COMPLETE_TEXT));
 
@@ -519,16 +522,16 @@ public class StageOne implements Initializable {
         toBlack.setOnFinished(ev -> {
             try {
                 URL resource = getClass().getResource(
-                        "/com/example/kaiajourneythroughgrief/stage_two.fxml");
+                        "/com/example/kaiajourneythroughgrief/menu.fxml");
                 if (resource == null) {
-                    System.err.println("[StageOne] stage_two.fxml not found");
+                    System.err.println("[StageTwo] menu.fxml not found");
                     return;
                 }
                 FXMLLoader loader = new FXMLLoader(resource);
                 Scene scene = new Scene(loader.load());
                 ((Stage) battleArea.getScene().getWindow()).setScene(scene);
             } catch (Exception ex) {
-                System.err.println("[StageOne] Failed to load next stage: " + ex.getMessage());
+                System.err.println("[StageTwo] Failed to load menu: " + ex.getMessage());
             }
         });
         toBlack.play();
@@ -560,7 +563,8 @@ public class StageOne implements Initializable {
         battleArea.getChildren().removeIf(n -> n instanceof StackPane);
         gameOver     = false;
         lastNanoTime = -1;
-        arraysSolved = 0;   // reset counter on restart
+        arraysSolved = 0;
+        correctsPending = 0;
         setMeter(0.5);
         setupMouseHandlers();
         generateRandomLevel();
@@ -604,6 +608,15 @@ public class StageOne implements Initializable {
             currentValues.put(key, num);
         }
         currentMode = random.nextBoolean() ? SortMode.ASCENDING : SortMode.DESCENDING;
+
+        // Randomly lock some tiles
+        tileIsLocked = new boolean[NUMBER_COUNT];
+        int lockedCount = Math.min(LOCKED_TILES_INITIAL, NUMBER_COUNT);
+        for (int i = 0; i < lockedCount; i++) {
+            int idx = random.nextInt(NUMBER_COUNT);
+            tileIsLocked[idx] = true;
+        }
+        correctsPending = 0;
     }
 
     // =========================================================================
@@ -614,9 +627,15 @@ public class StageOne implements Initializable {
 
     private void swapElements(int i, int j) {
         String t = levelData[i]; levelData[i] = levelData[j]; levelData[j] = t;
+        // Swap locked status too
+        boolean tmp = tileIsLocked[i]; tileIsLocked[i] = tileIsLocked[j]; tileIsLocked[j] = tmp;
     }
 
     private boolean isSorted() {
+        // First, reveal any locked tiles that are already in correct positions
+        revealCorrectlyPositionedLockedTiles();
+
+        // Now check if the array is fully sorted
         for (int i = 1; i < NUMBER_COUNT; i++) {
             if (currentMode == SortMode.ASCENDING  && getValue(i-1) > getValue(i)) return false;
             if (currentMode == SortMode.DESCENDING && getValue(i-1) < getValue(i)) return false;
@@ -650,6 +669,112 @@ public class StageOne implements Initializable {
 
     private String themeColor() {
         return currentMode == SortMode.DESCENDING ? C_DESCENDING : C_ASCENDING;
+    }
+
+    // =========================================================================
+    // LOCKED TILE REVEALS
+    // =========================================================================
+
+    /**
+     * Called after a successful swap. Tracks correct placements and unlocks tiles.
+     */
+    private void processLockedTileReveals(int correctCount) {
+        if (correctCount <= 0) return;
+
+        correctsPending += correctCount;
+
+        // First, reveal any correctly positioned locked tiles
+        // This might add to correctsPending if they were previously locked
+        int autoRevealed = revealCorrectlyPositionedLockedTiles();
+        correctsPending += autoRevealed;
+
+        // Check if we should unlock any additional random tiles
+        while (correctsPending >= CORRECT_COUNT_TO_UNLOCK) {
+            correctsPending -= CORRECT_COUNT_TO_UNLOCK;
+            unlockRandomTile();
+        }
+    }
+
+    /**
+     * Unlocks a random locked tile with a shake animation.
+     */
+    private void unlockRandomTile() {
+        // Find a locked tile
+        int lockedIndex = -1;
+        for (int i = 0; i < NUMBER_COUNT; i++) {
+            if (tileIsLocked[i]) {
+                lockedIndex = i;
+                break;
+            }
+        }
+
+        if (lockedIndex == -1) return; // No locked tiles left
+
+        // Animate the shake
+        shakeAndRevealTile(lockedIndex);
+    }
+
+    /**
+     * Checks for locked tiles that are in the correct position and reveals them
+     * @return number of tiles that were revealed
+     */
+    private int revealCorrectlyPositionedLockedTiles() {
+        int revealedCount = 0;
+        for (int i = 0; i < NUMBER_COUNT; i++) {
+            if (tileIsLocked[i] && isPositionCorrect(i)) {
+                // This locked tile is in the correct position - reveal it immediately
+                tileIsLocked[i] = false;
+                revealedCount++;
+            }
+        }
+        return revealedCount;
+    }
+
+    /**
+     * Shake animation for tile reveal.
+     */
+    private void shakeAndRevealTile(int index) {
+        double[] basePos = boxPosition(index);
+        double shakeAmount = 4.0;
+        int shakeFrames = 10;
+        Duration shakeDuration = Duration.millis(200);
+
+        Timeline shakeTimeline = new Timeline();
+
+        for (int i = 0; i <= shakeFrames; i++) {
+            double offset = (i % 2 == 0) ? shakeAmount : -shakeAmount;
+            final int currentFrame = i;
+
+            shakeTimeline.getKeyFrames().add(new KeyFrame(
+                    shakeDuration.multiply(i / (double) shakeFrames),
+                    e -> {
+                        drawCanvasHeader();
+                        for (int j = 0; j < NUMBER_COUNT; j++) {
+                            if (j == index) continue;
+                            double[] pos = boxPosition(j);
+                            drawBox(pos[0], pos[1], getString(j), isPositionCorrect(j), false);
+                        }
+                        double[] shakePos = boxPosition(index);
+                        double shakeOffset = (currentFrame % 2 == 0) ? shakeAmount : -shakeAmount;
+                        drawBox(shakePos[0] + shakeOffset, shakePos[1], getString(index), false, false);
+                    }
+            ));
+        }
+
+        shakeTimeline.setOnFinished(e -> {
+            tileIsLocked[index] = false;
+            drawArray();
+        });
+
+        shakeTimeline.play();
+    }
+
+    /**
+     * Get display string for a tile (either the number or "?" if locked).
+     */
+    private String getString(int index) {
+        if (tileIsLocked[index]) return "?";
+        return String.valueOf(getValue(index));
     }
 
     // =========================================================================
@@ -767,7 +892,7 @@ public class StageOne implements Initializable {
         gc.setLineWidth(1);
         gc.strokeLine(14, 30, 110, 30);
 
-        // ── Progress counter — shown when more than 1 array is required ───
+        // ── Progress counter ───
         if (ARRAYS_TO_WIN > 1) {
             String progress = (arraysSolved + 1) + "  /  " + ARRAYS_TO_WIN;
             gc.setFill(Color.web(C_META_TEXT));
@@ -782,14 +907,19 @@ public class StageOne implements Initializable {
         for (int i = 0; i < NUMBER_COUNT; i++) {
             if (dragging && i == dragIndex) continue;
             double[] pos = boxPosition(i);
-            drawBox(pos[0], pos[1], String.valueOf(getValue(i)), isPositionCorrect(i), false);
+            String display = getString(i);
+            boolean correct = !tileIsLocked[i] && isPositionCorrect(i);
+            drawBox(pos[0], pos[1], display, correct, false);
         }
-        if (dragging && dragIndex != -1)
-            drawBox(dragX, dragY, String.valueOf(getValue(dragIndex)), false, true);
+        if (dragging && dragIndex != -1) {
+            String display = getString(dragIndex);
+            drawBox(dragX, dragY, display, false, true);
+        }
     }
 
     private void drawBox(double x, double y, String text, boolean correct, boolean isDragged) {
-        String theme = correct ? C_COMPLETION : themeColor();
+        boolean isLocked = text.equals("?");
+        String theme = isLocked ? C_LOCKED : (correct ? C_COMPLETION : themeColor());
 
         gc.setFill(Color.web(C_CARD_BG));
         gc.fillRoundRect(x, y, boxWidth, BOX_HEIGHT, CARD_RADIUS, CARD_RADIUS);
@@ -801,7 +931,7 @@ public class StageOne implements Initializable {
         gc.setFill(Color.web(theme, isDragged ? 1.0 : (correct ? 0.4 : 0.85)));
         gc.fillRoundRect(x + 1, y + 8, ACCENT_W, BOX_HEIGHT - 16, 2, 2);
 
-        gc.setFill(Color.web(correct ? C_COMPLETION : C_ACTIVE_TITLE));
+        gc.setFill(Color.web(correct ? C_COMPLETION : (isLocked ? C_LOCKED : C_ACTIVE_TITLE)));
         gc.setFont(Font.font("Georgia", FontWeight.BOLD, 20));
         gc.setTextAlign(TextAlignment.CENTER);
         gc.fillText(text, x + boxWidth / 2.0, y + BOX_HEIGHT / 2.0 + 7);
@@ -827,8 +957,8 @@ public class StageOne implements Initializable {
 
         double[] fp = boxPosition(from);
         double[] tp = boxPosition(to);
-        String valA = String.valueOf(getValue(from));
-        String valB = String.valueOf(getValue(to));
+        String valA = getString(from);
+        String valB = getString(to);
 
         Duration total    = Duration.millis(SWAP_MILLIS);
         Timeline timeline = new Timeline();
@@ -846,7 +976,7 @@ public class StageOne implements Initializable {
                         for (int j = 0; j < NUMBER_COUNT; j++) {
                             if (j == from || j == to) continue;
                             double[] p = boxPosition(j);
-                            drawBox(p[0], p[1], String.valueOf(getValue(j)));
+                            drawBox(p[0], p[1], getString(j));
                         }
                         drawBox(fax, fay, valA);
                         drawBox(fbx, fby, valB);
@@ -858,7 +988,11 @@ public class StageOne implements Initializable {
             swapElements(from, to);
             dragIndex = -1;
             animating = false;
-            gainHealth(countCorrectAfterSwap(from, to));
+
+            int correctCount = countCorrectAfterSwap(from, to);
+            gainHealth(correctCount);
+            processLockedTileReveals(correctCount);
+
             drawArray();
         });
 
