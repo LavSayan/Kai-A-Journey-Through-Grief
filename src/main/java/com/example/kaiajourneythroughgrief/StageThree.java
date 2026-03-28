@@ -4,6 +4,7 @@ import javafx.animation.AnimationTimer;
 import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.animation.TranslateTransition;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -36,16 +37,21 @@ import java.util.Map;
 import java.util.Random;
 import java.util.ResourceBundle;
 
-public class StageTwo implements Initializable {
+/**
+ * StageThree — "Sort Ascending" with a twist:
+ *   Each tile shows a math EXPRESSION (e.g. "5+3", "12−4", "3×6").
+ *   The player must mentally evaluate each expression and sort the tiles
+ *   by their RESULT from smallest to largest.
+ *
+ *   Expressions use +, −, × with results guaranteed in 10–99.
+ */
+public class StageThree implements Initializable {
 
     // ── FXML injected nodes ────────────────────────────────────────────────
     @FXML private StackPane   topPanel;
     @FXML private ProgressBar healthBar;
     @FXML private AnchorPane  battleArea;
     @FXML private StackPane   bottomPanel;
-
-    // ── Sort modes ─────────────────────────────────────────────────────────
-    private enum SortMode { ASCENDING, DESCENDING }
 
     // =========================================================================
     // DESIGN SYSTEM
@@ -63,13 +69,12 @@ public class StageTwo implements Initializable {
     private static final String C_ACCENT_LINE  = "#B8860B";
     private static final String C_PLAYER_GREEN = "#0a6f0b";
     private static final String C_ENEMY_RED    = "#af0000";
-    private static final String C_ASCENDING    = "#ADD8E6";
-    private static final String C_DESCENDING   = "#DC143C";
+    private static final String C_THEME        = "#FFD580";
 
     // ── Assets ────────────────────────────────────────────────────────────
-    private static final String IMG_BACKGROUND = "assets/stage1/background.png";
-    private static final String IMG_PLAYER     = "assets/stage1/player.gif";
-    private static final String IMG_ENEMY      = "assets/stage1/enemy.gif";
+    private static final String IMG_BACKGROUND = "assets/stage3/background.png";
+    private static final String IMG_PLAYER     = "assets/stage3/player.gif";
+    private static final String IMG_ENEMY      = "assets/stage3/enemy.gif";
 
     // ── Character size ────────────────────────────────────────────────────
     private static final double CHAR_WIDTH  = 300;
@@ -77,7 +82,8 @@ public class StageTwo implements Initializable {
 
     // ── Sorting config ────────────────────────────────────────────────────
     private static final int    NUMBER_COUNT = 8;
-    private static final double BOX_HEIGHT   = 56;
+    // Expression tiles need a bit more height to show the label + expression
+    private static final double BOX_HEIGHT   = 64;
     private static final double SPACING      = 8;
     private static final double MARGIN_X     = 20;
     private static final int    SWAP_FRAMES  = 60;
@@ -94,20 +100,34 @@ public class StageTwo implements Initializable {
     // =========================================================================
 
     /** How many arrays the player must solve before victory. */
-    private static final int ARRAYS_TO_WIN = 2;
+    private static final int ARRAYS_TO_WIN = 1;
 
     /**
-     * How much health the player loses on a wrong move (a swap that increases
-     * or does not reduce the number of inversions in the array).
+     * How much health the player loses on a wrong move.
      * Range: 0.0 – 1.0  (e.g. 0.05 = 5 % of the bar per wrong swap)
      */
-    private static final double LOSS_PER_WRONG = 0.10;
+    private static final double LOSS_PER_WRONG = 0.05;
+
+    // =========================================================================
+    // EXPRESSION DATA
+    // =========================================================================
+
+    /**
+     * Each tile stores:
+     *   expressionLabels[i]  — the string shown on the tile, e.g. "5+3"
+     *   currentValues map    — maps the unique key → evaluated integer result
+     *
+     * The sort order is determined entirely by the evaluated result.
+     * The player sees only the expression and must sort by mental evaluation.
+     */
+    private String[]             levelData;        // unique keys, one per tile
+    private String[]             expressionLabels; // display strings e.g. "5+3"
+    private Map<String, Integer> currentValues;    // key → evaluated result
 
     // =========================================================================
     // STATE
     // =========================================================================
 
-    // Health
     private double         playerMeter   = 0.5;
     private long           lastNanoTime  = -1;
     private boolean        gameOver      = false;
@@ -115,30 +135,21 @@ public class StageTwo implements Initializable {
     private ProgressBar    battleHealthBar;
     private VBox           healthBarContainer;
 
-    // ── Array solve counter ───────────────────────────────────────────────
     private int arraysSolved = 0;
 
-    // Sorting
-    private SortMode             currentMode;
-    private String[]             levelData;
-    private Map<String, Integer> currentValues;
-
-    // Drag
     private boolean dragging    = false;
     private boolean animating   = false;
     private int     dragIndex   = -1;
     private double  dragOffsetX, dragOffsetY, dragX, dragY;
 
-    // Layout
     private double boxWidth;
     private int    maxPerRow;
 
-    // Canvas
     private Canvas          canvas;
     private GraphicsContext gc;
     private final Random    random = new Random();
 
-    // ── Character VBox references (needed for shake animations) ──────────
+    // ── Character VBox references ─────────────────────────────────────────
     private VBox playerBox;
     private VBox enemyBox;
 
@@ -173,12 +184,12 @@ public class StageTwo implements Initializable {
     // =========================================================================
 
     private void buildTitleBar() {
-        Label eyebrow = new Label("STAGE 2");
+        Label eyebrow = new Label("STAGE 3");
         eyebrow.setFont(Font.font("Courier New", FontWeight.BOLD, 8));
         eyebrow.setTextFill(Color.web(C_META_TEXT));
         eyebrow.setStyle("-fx-letter-spacing: 2;");
 
-        Label title = new Label("A City of Shattered Glass");
+        Label title = new Label("A Temple of Endless Doors");
         title.setFont(Font.font("Georgia", FontWeight.BOLD, 15));
         title.setTextFill(Color.web(C_TITLE_TEXT));
         title.setEffect(new DropShadow(8, Color.web("#000000", 0.9)));
@@ -238,7 +249,7 @@ public class StageTwo implements Initializable {
             Scene scene = new Scene(loader.load());
             ((Stage) battleArea.getScene().getWindow()).setScene(scene);
         } catch (Exception e) {
-            System.err.println("[StageTwo] Back failed: " + e.getMessage());
+            System.err.println("[StageThree] Back failed: " + e.getMessage());
         }
     }
 
@@ -264,7 +275,6 @@ public class StageTwo implements Initializable {
             battleArea.getChildren().add(bg);
         }
 
-        // Store references so shake animations can target them
         playerBox = buildCharacterNode(
                 loadImage(IMG_PLAYER, CHAR_WIDTH, CHAR_HEIGHT, true), "PLAYER", true);
         AnchorPane.setLeftAnchor(playerBox,   80.0);
@@ -365,7 +375,7 @@ public class StageTwo implements Initializable {
             iv.setSmooth(true);
             return iv;
         } catch (Exception e) {
-            System.err.println("[Stagetwo] Could not load: " + filename + " — " + e.getMessage());
+            System.err.println("[StageThree] Could not load: " + filename + " — " + e.getMessage());
             return null;
         }
     }
@@ -386,7 +396,6 @@ public class StageTwo implements Initializable {
                 lastNanoTime = now;
 
                 setMeter(playerMeter - DRAIN_PER_SECOND * delta);
-
                 if (playerMeter <= 0.0) { triggerGameOver(false); return; }
 
                 if (!animating && !dragging && isSorted()) {
@@ -397,7 +406,6 @@ public class StageTwo implements Initializable {
                         generateRandomLevel();
                         recalcLayout();
                         drawArray();
-                        drawProgressIndicator();
                     }
                 }
             }
@@ -419,103 +427,49 @@ public class StageTwo implements Initializable {
     }
 
     // =========================================================================
-    // PROGRESS INDICATOR
-    // =========================================================================
-
-    private void drawProgressIndicator() {
-        drawArray();
-    }
-
-    // =========================================================================
     // SHAKE ANIMATIONS
     // =========================================================================
 
-    /**
-     * Plays a subtle horizontal shake on the given VBox.
-     * @param node      the character VBox to shake
-     * @param amplitude max pixel offset (keep small — 4–6 px feels right)
-     * @param cycles    number of back-and-forth oscillations
-     * @param millis    total duration of the shake in milliseconds
-     */
     private void shakeNode(VBox node, double amplitude, int cycles, int millis) {
         if (node == null) return;
-
-        // Build a quick keyframe sequence: centre → right → left → centre, repeated
-        Timeline shake = new Timeline();
-        int steps       = cycles * 4;          // 4 keyframes per cycle
+        Timeline shake  = new Timeline();
+        int    steps    = cycles * 4;
         double stepTime = millis / (double) steps;
-
         for (int i = 0; i <= steps; i++) {
-            double progress = i / (double) steps;      // 0 → 1
-            // sine wave gives smooth oscillation; multiply by (1-progress) for decay
-            double offset = Math.sin(progress * cycles * 2 * Math.PI) * amplitude * (1 - progress);
+            double progress = i / (double) steps;
+            double offset   = Math.sin(progress * cycles * 2 * Math.PI) * amplitude * (1 - progress);
             final double tx = offset;
-            shake.getKeyFrames().add(new KeyFrame(
-                    Duration.millis(i * stepTime),
-                    e -> node.setTranslateX(tx)
-            ));
+            shake.getKeyFrames().add(new KeyFrame(Duration.millis(i * stepTime),
+                    e -> node.setTranslateX(tx)));
         }
-
-        // Guarantee we end exactly at 0 so the sprite doesn't drift
-        shake.getKeyFrames().add(new KeyFrame(
-                Duration.millis(millis),
-                e -> node.setTranslateX(0)
-        ));
-
+        shake.getKeyFrames().add(new KeyFrame(Duration.millis(millis),
+                e -> node.setTranslateX(0)));
         shake.play();
     }
 
-    /** Correct move → player action shake (small, snappy) */
-    private void shakePlayer() {
-        shakeNode(playerBox, 5.0, 3, 320);
-    }
-
-    /** Wrong move → enemy reaction shake (small, snappy) */
-    private void shakeEnemy() {
-        shakeNode(enemyBox, 5.0, 3, 320);
-    }
+    private void shakePlayer() { shakeNode(playerBox, 5.0, 3, 320); }
+    private void shakeEnemy()  { shakeNode(enemyBox,  5.0, 3, 320); }
 
     // =========================================================================
-    // INVERSION COUNTING  (used to judge move quality)
+    // INVERSION COUNTING
     // =========================================================================
 
-    /**
-     * Counts the number of inversions in the current levelData array.
-     * An inversion is a pair (i, j) where i < j but the values are in the
-     * wrong relative order for the current sort mode.
-     */
     private int countInversions(String[] data) {
         int inv = 0;
-        for (int i = 0; i < data.length - 1; i++) {
-            for (int j = i + 1; j < data.length; j++) {
-                int vi = currentValues.get(data[i]);
-                int vj = currentValues.get(data[j]);
-                if (currentMode == SortMode.ASCENDING  && vi > vj) inv++;
-                if (currentMode == SortMode.DESCENDING && vi < vj) inv++;
-            }
-        }
+        for (int i = 0; i < data.length - 1; i++)
+            for (int j = i + 1; j < data.length; j++)
+                if (currentValues.get(data[i]) > currentValues.get(data[j])) inv++;
         return inv;
     }
 
-    /**
-     * Returns the inversion count that would result from swapping indices a and b
-     * WITHOUT modifying the real array.
-     */
     private int inversionsAfterSwap(int a, int b) {
         String[] copy = Arrays.copyOf(levelData, levelData.length);
         String tmp = copy[a]; copy[a] = copy[b]; copy[b] = tmp;
         return countInversions(copy);
     }
 
-    /**
-     * A swap is considered a CORRECT (beneficial) move if it strictly
-     * reduces the number of inversions — i.e. moves the array closer to
-     * being fully sorted.
-     */
     private boolean isGoodSwap(int a, int b) {
-        int before = countInversions(levelData);
-        int after  = inversionsAfterSwap(a, b);
-        return after < before;
+        return inversionsAfterSwap(a, b) < countInversions(levelData);
     }
 
     // =========================================================================
@@ -528,9 +482,7 @@ public class StageTwo implements Initializable {
         canvas.setOnMousePressed(null);
         canvas.setOnMouseDragged(null);
         canvas.setOnMouseReleased(null);
-
-        if (won) SaveManager.unlockNext("stage2");
-
+        if (won) SaveManager.unlockNext("stage3");
         showEndOverlay(won);
     }
 
@@ -552,7 +504,7 @@ public class StageTwo implements Initializable {
         titleLabel.setTextFill(Color.web(won ? C_COMPLETION : C_ENEMY_RED));
         titleLabel.setEffect(new DropShadow(14, Color.web(won ? C_COMPLETION : C_ENEMY_RED, 0.35)));
 
-        Label subLabel = new Label(won ? "The array has been sorted." : "The enemy overcame you.");
+        Label subLabel = new Label(won ? "The equations are solved." : "The enemy overcame you.");
         subLabel.setFont(Font.font("Georgia", FontPosture.ITALIC, 13));
         subLabel.setTextFill(Color.web(C_COMPLETE_TEXT));
 
@@ -619,16 +571,13 @@ public class StageTwo implements Initializable {
         toBlack.setOnFinished(ev -> {
             try {
                 URL resource = getClass().getResource(
-                        "/com/example/kaiajourneythroughgrief/stage_three.fxml");
-                if (resource == null) {
-                    System.err.println("[StageTwo] stage_two.fxml not found");
-                    return;
-                }
+                        "/com/example/kaiajourneythroughgrief/stage_four.fxml");
+                if (resource == null) { System.err.println("[StageThree] next fxml not found"); return; }
                 FXMLLoader loader = new FXMLLoader(resource);
                 Scene scene = new Scene(loader.load());
                 ((Stage) battleArea.getScene().getWindow()).setScene(scene);
             } catch (Exception ex) {
-                System.err.println("[StageTwo] Failed to load next stage: " + ex.getMessage());
+                System.err.println("[StageThree] Failed to navigate: " + ex.getMessage());
             }
         });
         toBlack.play();
@@ -673,7 +622,7 @@ public class StageTwo implements Initializable {
     // =========================================================================
 
     private void buildSortingCanvas() {
-        canvas = new Canvas(800, 130);
+        canvas = new Canvas(800, 140);   // slightly taller for expression tiles
         gc     = canvas.getGraphicsContext2D();
 
         generateRandomLevel();
@@ -691,53 +640,110 @@ public class StageTwo implements Initializable {
     }
 
     // =========================================================================
-    // LEVEL GENERATION
+    // LEVEL GENERATION — expressions whose results land in 10–99
     // =========================================================================
 
+    /**
+     * Generates a random math expression using +, −, or × whose evaluated
+     * result is in [10, 99].  Retries until a valid result is found.
+     *
+     * Returns a two-element array: { displayLabel, evaluatedResult }
+     */
+    private Object[] makeExpression() {
+        int result;
+        String label;
+        int tries = 0;
+
+        do {
+            int op = random.nextInt(3);   // 0=+  1=−  2=×
+            int a, b;
+
+            switch (op) {
+                case 0: {   // addition:  a + b in [10,99]
+                    a      = random.nextInt(89) + 1;    // 1–89
+                    b      = random.nextInt(89) + 1;
+                    result = a + b;
+                    label  = a + "+" + b;
+                    break;
+                }
+                case 1: {   // subtraction: a − b in [10,99], a > b
+                    // pick result first so it's guaranteed valid
+                    result = random.nextInt(90) + 10;   // 10–99
+                    b      = random.nextInt(20) + 1;    // small subtrahend 1–20
+                    a      = result + b;
+                    label  = a + "\u2212" + b;           // − (minus sign)
+                    break;
+                }
+                default: {  // multiplication: a × b in [10,99]
+                    a      = random.nextInt(9) + 2;     // 2–10
+                    b      = random.nextInt(9) + 2;
+                    result = a * b;
+                    label  = a + "\u00d7" + b;           // × (times sign)
+                    break;
+                }
+            }
+
+            if (result >= 10 && result <= 99) {
+                return new Object[]{ label, result };
+            }
+            tries++;
+        } while (tries < 200);
+
+        // Fallback: plain addition guaranteed in range
+        int a = random.nextInt(40) + 10;
+        int b = random.nextInt(40) + 10;
+        return new Object[]{ a + "+" + b, a + b };
+    }
+
     private void generateRandomLevel() {
-        levelData     = new String[NUMBER_COUNT];
-        currentValues = new HashMap<>();
+        levelData        = new String[NUMBER_COUNT];
+        expressionLabels = new String[NUMBER_COUNT];
+        currentValues    = new HashMap<>();
+
         for (int i = 0; i < NUMBER_COUNT; i++) {
-            int num    = random.nextInt(90) + 10;
-            String key = num + "_" + i;
-            levelData[i] = key;
-            currentValues.put(key, num);
+            Object[] expr = makeExpression();
+            String   displayLabel = (String)  expr[0];
+            int      result       = (Integer) expr[1];
+
+            // Key must be unique even if two expressions share the same result
+            String key = result + "_" + i;
+            levelData[i]        = key;
+            expressionLabels[i] = displayLabel;
+            currentValues.put(key, result);
         }
-        currentMode = random.nextBoolean() ? SortMode.ASCENDING : SortMode.DESCENDING;
+        // Always ascending — no mode randomisation
     }
 
     // =========================================================================
-    // SORT LOGIC
+    // SORT LOGIC — always ascending by evaluated result
     // =========================================================================
 
     private int getValue(int index) { return currentValues.get(levelData[index]); }
 
+    /** Returns the display expression for a given position. */
+    private String getLabel(int index) { return expressionLabels[index]; }
+
     private void swapElements(int i, int j) {
         String t = levelData[i]; levelData[i] = levelData[j]; levelData[j] = t;
+        // Also swap expression labels so they stay in sync with the keys
+        String tl = expressionLabels[i]; expressionLabels[i] = expressionLabels[j]; expressionLabels[j] = tl;
     }
 
     private boolean isSorted() {
-        for (int i = 1; i < NUMBER_COUNT; i++) {
-            if (currentMode == SortMode.ASCENDING  && getValue(i-1) > getValue(i)) return false;
-            if (currentMode == SortMode.DESCENDING && getValue(i-1) < getValue(i)) return false;
-        }
+        for (int i = 1; i < NUMBER_COUNT; i++)
+            if (getValue(i - 1) > getValue(i)) return false;
         return true;
     }
 
     private boolean isPositionCorrect(int pos) {
-        int[] sorted = sortedSnapshot(currentMode == SortMode.ASCENDING);
-        return getValue(pos) == sorted[pos];
+        return getValue(pos) == sortedSnapshot()[pos];
     }
 
-    private int[] sortedSnapshot(boolean ascending) {
+    /** Ascending snapshot of current evaluated results. */
+    private int[] sortedSnapshot() {
         int[] vals = new int[NUMBER_COUNT];
         for (int i = 0; i < NUMBER_COUNT; i++) vals[i] = getValue(i);
         Arrays.sort(vals);
-        if (!ascending) {
-            for (int i = 0, j = vals.length - 1; i < j; i++, j--) {
-                int tmp = vals[i]; vals[i] = vals[j]; vals[j] = tmp;
-            }
-        }
         return vals;
     }
 
@@ -748,17 +754,13 @@ public class StageTwo implements Initializable {
         return c;
     }
 
-    private String themeColor() {
-        return currentMode == SortMode.DESCENDING ? C_DESCENDING : C_ASCENDING;
-    }
-
     // =========================================================================
     // LAYOUT
     // =========================================================================
 
     private void recalcLayout() {
         double usable = canvas.getWidth() - MARGIN_X * 2;
-        maxPerRow = Math.max(1, (int) ((usable + SPACING) / (80 + SPACING)));
+        maxPerRow = Math.max(1, (int) ((usable + SPACING) / (90 + SPACING)));
         int itemsInRow = Math.min(maxPerRow, NUMBER_COUNT);
         boxWidth  = (usable - SPACING * (itemsInRow - 1)) / itemsInRow;
     }
@@ -771,9 +773,9 @@ public class StageTwo implements Initializable {
         double totalH    = totalRows * BOX_HEIGHT + (totalRows - 1) * SPACING;
         double startY    = (canvas.getHeight() - totalH) / 2.0 + 16;
 
-        int itemsInRow = Math.min(maxPerRow, NUMBER_COUNT - row * maxPerRow);
-        double rowWidth = itemsInRow * boxWidth + (itemsInRow - 1) * SPACING;
-        double startX   = (canvas.getWidth() - rowWidth) / 2.0;
+        int    itemsInRow = Math.min(maxPerRow, NUMBER_COUNT - row * maxPerRow);
+        double rowWidth   = itemsInRow * boxWidth + (itemsInRow - 1) * SPACING;
+        double startX     = (canvas.getWidth() - rowWidth) / 2.0;
 
         return new double[]{
                 startX + col * (boxWidth + SPACING),
@@ -797,7 +799,7 @@ public class StageTwo implements Initializable {
             double[] pos = boxPosition(i);
             double   cx  = pos[0] + boxWidth   / 2;
             double   cy  = pos[1] + BOX_HEIGHT / 2;
-            double   d2  = (x-cx)*(x-cx) + (y-cy)*(y-cy);
+            double   d2  = (x - cx) * (x - cx) + (y - cy) * (y - cy);
             if (d2 < bestD) { bestD = d2; best = i; }
         }
         return best;
@@ -833,7 +835,6 @@ public class StageTwo implements Initializable {
             dragging = false;
             int target = nearestIndex(e.getX(), e.getY());
             if (target != -1 && target != dragIndex) {
-                // ── Evaluate the move BEFORE the swap is performed ────────
                 boolean goodMove = isGoodSwap(dragIndex, target);
                 animateSwap(dragIndex, target, goodMove);
             } else {
@@ -860,14 +861,13 @@ public class StageTwo implements Initializable {
         gc.setTextAlign(TextAlignment.LEFT);
         gc.fillText("OBJECTIVE", 14, 14);
 
-        String modeLabel = currentMode == SortMode.DESCENDING ? "Sort Descending" : "Sort Ascending";
-        gc.setFill(Color.web(themeColor(), 0.85));
+        gc.setFill(Color.web(C_THEME, 0.85));
         gc.setFont(Font.font("Georgia", FontPosture.ITALIC, 12));
-        gc.fillText(modeLabel, 14, 27);
+        gc.fillText("Solve & Sort Ascending", 14, 27);
 
-        gc.setStroke(Color.web(themeColor(), 0.4));
+        gc.setStroke(Color.web(C_THEME, 0.4));
         gc.setLineWidth(1);
-        gc.strokeLine(14, 30, 110, 30);
+        gc.strokeLine(14, 30, 150, 30);
 
         if (ARRAYS_TO_WIN > 1) {
             String progress = (arraysSolved + 1) + "  /  " + ARRAYS_TO_WIN;
@@ -883,36 +883,64 @@ public class StageTwo implements Initializable {
         for (int i = 0; i < NUMBER_COUNT; i++) {
             if (dragging && i == dragIndex) continue;
             double[] pos = boxPosition(i);
-            drawBox(pos[0], pos[1], String.valueOf(getValue(i)), isPositionCorrect(i), false);
+            drawBox(pos[0], pos[1], getLabel(i), isPositionCorrect(i), false);
         }
         if (dragging && dragIndex != -1)
-            drawBox(dragX, dragY, String.valueOf(getValue(dragIndex)), false, true);
+            drawBox(dragX, dragY, getLabel(dragIndex), false, true);
     }
 
-    private void drawBox(double x, double y, String text, boolean correct, boolean isDragged) {
-        String theme = correct ? C_COMPLETION : themeColor();
+    /**
+     * Draws a single expression tile.
+     * The expression (e.g. "5+3") is shown in large font in the centre.
+     * A small "= ?" label is drawn beneath it to remind the player to evaluate.
+     * When correct, the actual result value replaces "= ?" with "= {result} ✓".
+     */
+    private void drawBox(double x, double y, String exprText, boolean correct, boolean isDragged) {
+        String theme = correct ? C_COMPLETION : C_THEME;
 
+        // Card background
         gc.setFill(Color.web(C_CARD_BG));
         gc.fillRoundRect(x, y, boxWidth, BOX_HEIGHT, CARD_RADIUS, CARD_RADIUS);
 
+        // Card border
         gc.setStroke(Color.web(theme, isDragged ? 1.0 : (correct ? 0.55 : 0.7)));
         gc.setLineWidth(1.5);
         gc.strokeRoundRect(x, y, boxWidth, BOX_HEIGHT, CARD_RADIUS, CARD_RADIUS);
 
+        // Left accent bar
         gc.setFill(Color.web(theme, isDragged ? 1.0 : (correct ? 0.4 : 0.85)));
         gc.fillRoundRect(x + 1, y + 8, ACCENT_W, BOX_HEIGHT - 16, 2, 2);
 
+        // Expression text — main label
         gc.setFill(Color.web(correct ? C_COMPLETION : C_ACTIVE_TITLE));
-        gc.setFont(Font.font("Georgia", FontWeight.BOLD, 20));
+        gc.setFont(Font.font("Georgia", FontWeight.BOLD, 18));
         gc.setTextAlign(TextAlignment.CENTER);
-        gc.fillText(text, x + boxWidth / 2.0, y + BOX_HEIGHT / 2.0 + 7);
+        gc.fillText(exprText, x + boxWidth / 2.0, y + BOX_HEIGHT / 2.0 + 2);
 
+        // Sub-label below expression
         if (correct) {
-            gc.setFill(Color.web(C_COMPLETION, 0.7));
-            gc.setFont(Font.font("Georgia", 11));
-            gc.setTextAlign(TextAlignment.LEFT);
-            gc.fillText("✓", x + boxWidth - 13, y + 13);
+            // Show the evaluated result and a tick
+            int result = currentValues.get(levelData[getIndexByLabel(exprText)]);
+            gc.setFill(Color.web(C_COMPLETION, 0.75));
+            gc.setFont(Font.font("Courier New", FontWeight.BOLD, 9));
+            gc.fillText("= " + result + " ✓", x + boxWidth / 2.0, y + BOX_HEIGHT - 8);
+        } else {
+            // Prompt the player to solve it
+            gc.setFill(Color.web(C_THEME, 0.45));
+            gc.setFont(Font.font("Courier New", 9));
+            gc.fillText("= ?", x + boxWidth / 2.0, y + BOX_HEIGHT - 8);
         }
+    }
+
+    /**
+     * Helper: find the current array index whose expressionLabel matches the given text.
+     * Used only inside drawBox to look up the result for the "= result ✓" label.
+     * Falls back to 0 if not found (shouldn't happen in practice).
+     */
+    private int getIndexByLabel(String label) {
+        for (int i = 0; i < NUMBER_COUNT; i++)
+            if (label.equals(expressionLabels[i])) return i;
+        return 0;
     }
 
     private void drawBox(double x, double y, String text) {
@@ -923,30 +951,23 @@ public class StageTwo implements Initializable {
     // SWAP ANIMATION
     // =========================================================================
 
-    /**
-     * Animates a swap between indices {@code from} and {@code to}.
-     *
-     * @param goodMove true  → the swap reduces inversions (correct move):
-     *                           player shakes + health gained
-     *                 false → the swap increases/keeps inversions (wrong move):
-     *                           enemy shakes + health lost
-     */
     private void animateSwap(int from, int to, boolean goodMove) {
         animating = true;
 
         double[] fp = boxPosition(from);
         double[] tp = boxPosition(to);
-        String valA = String.valueOf(getValue(from));
-        String valB = String.valueOf(getValue(to));
+        // Capture display labels before the swap
+        String labelA = getLabel(from);
+        String labelB = getLabel(to);
 
         Duration total    = Duration.millis(SWAP_MILLIS);
         Timeline timeline = new Timeline();
 
         for (int i = 0; i <= SWAP_FRAMES; i++) {
             double t  = easeInOutQuad(i / (double) SWAP_FRAMES);
-            double ax = fp[0] + (tp[0] - fp[0]) * t,  ay = fp[1] + (tp[1] - fp[1]) * t;
-            double bx = tp[0] + (fp[0] - tp[0]) * t,  by = tp[1] + (fp[1] - tp[1]) * t;
-            final double fax=ax, fay=ay, fbx=bx, fby=by;
+            double ax = fp[0] + (tp[0] - fp[0]) * t, ay = fp[1] + (tp[1] - fp[1]) * t;
+            double bx = tp[0] + (fp[0] - tp[0]) * t, by = tp[1] + (fp[1] - tp[1]) * t;
+            final double fax = ax, fay = ay, fbx = bx, fby = by;
 
             timeline.getKeyFrames().add(new KeyFrame(
                     total.multiply(i / (double) SWAP_FRAMES),
@@ -955,10 +976,10 @@ public class StageTwo implements Initializable {
                         for (int j = 0; j < NUMBER_COUNT; j++) {
                             if (j == from || j == to) continue;
                             double[] p = boxPosition(j);
-                            drawBox(p[0], p[1], String.valueOf(getValue(j)));
+                            drawBox(p[0], p[1], getLabel(j));
                         }
-                        drawBox(fax, fay, valA);
-                        drawBox(fbx, fby, valB);
+                        drawBox(fax, fay, labelA);
+                        drawBox(fbx, fby, labelB);
                     }
             ));
         }
@@ -969,16 +990,13 @@ public class StageTwo implements Initializable {
             animating = false;
 
             if (goodMove) {
-                // ── Correct move: gain health + player action shake ───────
                 gainHealth(countCorrectAfterSwap(from, to));
                 shakePlayer();
             } else {
-                // ── Wrong move: lose health + enemy reaction shake ────────
                 setMeter(playerMeter - LOSS_PER_WRONG);
                 shakeEnemy();
                 if (playerMeter <= 0.0 && !gameOver) triggerGameOver(false);
             }
-
             drawArray();
         });
 
@@ -986,6 +1004,6 @@ public class StageTwo implements Initializable {
     }
 
     private double easeInOutQuad(double t) {
-        return t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
+        return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
     }
 }

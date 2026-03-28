@@ -18,7 +18,7 @@ import java.net.URL;
  * so the music continues seamlessly when navigating between menu and level screen.
  *
  * Place bgmusic.mp3 in:
- *   src/main/resources/com/example/kaiajourneythroughgrief/
+ *   src/main/resources/com/example/kaiajourneythroughgrief/assets
  */
 public class MusicPlayer {
 
@@ -38,10 +38,6 @@ public class MusicPlayer {
 
     // ── Volume (0.0 – 1.0) ────────────────────────────────────────────────
     private static final double VOLUME = 0.5;
-
-    // =========================================================================
-    // PUBLIC API
-    // =========================================================================
 
     /**
      * Starts playing the given file on an infinite loop.

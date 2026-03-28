@@ -29,6 +29,7 @@ import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
+import java.io.IOException;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -43,9 +44,6 @@ public class StageOne implements Initializable {
     @FXML private ProgressBar healthBar;
     @FXML private AnchorPane  battleArea;
     @FXML private StackPane   bottomPanel;
-
-    // ── Sort modes ─────────────────────────────────────────────────────────
-    private enum SortMode { ASCENDING, DESCENDING }
 
     // =========================================================================
     // DESIGN SYSTEM
@@ -63,8 +61,8 @@ public class StageOne implements Initializable {
     private static final String C_ACCENT_LINE  = "#B8860B";
     private static final String C_PLAYER_GREEN = "#0a6f0b";
     private static final String C_ENEMY_RED    = "#af0000";
-    private static final String C_ASCENDING    = "#ADD8E6";
-    private static final String C_DESCENDING   = "#DC143C";
+    // Stage 1 is always ascending — single fixed theme colour
+    private static final String C_THEME        = "#ADD8E6";
 
     // ── Assets ────────────────────────────────────────────────────────────
     private static final String IMG_BACKGROUND = "assets/stage1/background.png";
@@ -90,15 +88,22 @@ public class StageOne implements Initializable {
     private static final double GAIN_PER_CORRECT = 0.08;
 
     // =========================================================================
-    // ★ DEVELOPER SETTING — Arrays to solve before victory
+    // ★ DEVELOPER SETTINGS
     // =========================================================================
-    private static final int ARRAYS_TO_WIN = 5;
+
+    /** How many arrays the player must solve before victory. */
+    private static final int ARRAYS_TO_WIN = 1;
+
+    /**
+     * How much health the player loses on a wrong move.
+     * Range: 0.0 – 1.0  (e.g. 0.05 = 5 % of the bar per wrong swap)
+     */
+    private static final double LOSS_PER_WRONG = 0.05;
 
     // =========================================================================
     // STATE
     // =========================================================================
 
-    // Health
     private double         playerMeter   = 0.5;
     private long           lastNanoTime  = -1;
     private boolean        gameOver      = false;
@@ -106,30 +111,26 @@ public class StageOne implements Initializable {
     private ProgressBar    battleHealthBar;
     private VBox           healthBarContainer;
 
-    // ── Array solve counter ───────────────────────────────────────────────
-    // Incremented each time the player completes a sorted array.
-    // Victory triggers when this reaches ARRAYS_TO_WIN.
     private int arraysSolved = 0;
 
-    // Sorting
-    private SortMode             currentMode;
     private String[]             levelData;
     private Map<String, Integer> currentValues;
 
-    // Drag
     private boolean dragging    = false;
     private boolean animating   = false;
     private int     dragIndex   = -1;
     private double  dragOffsetX, dragOffsetY, dragX, dragY;
 
-    // Layout
     private double boxWidth;
     private int    maxPerRow;
 
-    // Canvas
     private Canvas          canvas;
     private GraphicsContext gc;
     private final Random    random = new Random();
+
+    // ── Character VBox references ─────────────────────────────────────────
+    private VBox playerBox;
+    private VBox enemyBox;
 
     // =========================================================================
     // INIT
@@ -145,6 +146,7 @@ public class StageOne implements Initializable {
         buildBattleScene();
         buildSortingCanvas();
         startGameLoop();
+
     }
 
     private void styleScene() {
@@ -253,13 +255,13 @@ public class StageOne implements Initializable {
             battleArea.getChildren().add(bg);
         }
 
-        VBox playerBox = buildCharacterNode(
+        playerBox = buildCharacterNode(
                 loadImage(IMG_PLAYER, CHAR_WIDTH, CHAR_HEIGHT, true), "PLAYER", true);
         AnchorPane.setLeftAnchor(playerBox,   80.0);
         AnchorPane.setBottomAnchor(playerBox, 40.0);
         battleArea.getChildren().add(playerBox);
 
-        VBox enemyBox = buildCharacterNode(
+        enemyBox = buildCharacterNode(
                 loadImage(IMG_ENEMY, CHAR_WIDTH, CHAR_HEIGHT, true), "ENEMY", false);
         AnchorPane.setRightAnchor(enemyBox,   80.0);
         AnchorPane.setBottomAnchor(enemyBox,  40.0);
@@ -374,21 +376,16 @@ public class StageOne implements Initializable {
                 lastNanoTime = now;
 
                 setMeter(playerMeter - DRAIN_PER_SECOND * delta);
-
                 if (playerMeter <= 0.0) { triggerGameOver(false); return; }
 
-                // Check sorted — but only count it if we're not animating/dragging
                 if (!animating && !dragging && isSorted()) {
                     arraysSolved++;
                     if (arraysSolved >= ARRAYS_TO_WIN) {
-                        // Player has solved enough arrays — victory
                         triggerGameOver(true);
                     } else {
-                        // More arrays to go — generate a new one and keep playing
                         generateRandomLevel();
                         recalcLayout();
                         drawArray();
-                        drawProgressIndicator();
                     }
                 }
             }
@@ -410,12 +407,49 @@ public class StageOne implements Initializable {
     }
 
     // =========================================================================
-    // PROGRESS INDICATOR
+    // SHAKE ANIMATIONS
     // =========================================================================
-    private void drawProgressIndicator() {
-        // The counter is baked into the next drawArray() call via drawCanvasHeader(),
-        // so we just need to trigger a redraw — the header reads arraysSolved directly.
-        drawArray();
+
+    private void shakeNode(VBox node, double amplitude, int cycles, int millis) {
+        if (node == null) return;
+        Timeline shake  = new Timeline();
+        int    steps    = cycles * 4;
+        double stepTime = millis / (double) steps;
+        for (int i = 0; i <= steps; i++) {
+            double progress = i / (double) steps;
+            double offset   = Math.sin(progress * cycles * 2 * Math.PI) * amplitude * (1 - progress);
+            final double tx = offset;
+            shake.getKeyFrames().add(new KeyFrame(Duration.millis(i * stepTime),
+                    e -> node.setTranslateX(tx)));
+        }
+        shake.getKeyFrames().add(new KeyFrame(Duration.millis(millis),
+                e -> node.setTranslateX(0)));
+        shake.play();
+    }
+
+    private void shakePlayer() { shakeNode(playerBox, 5.0, 3, 320); }
+    private void shakeEnemy()  { shakeNode(enemyBox,  5.0, 3, 320); }
+
+    // =========================================================================
+    // INVERSION COUNTING
+    // =========================================================================
+
+    private int countInversions(String[] data) {
+        int inv = 0;
+        for (int i = 0; i < data.length - 1; i++)
+            for (int j = i + 1; j < data.length; j++)
+                if (currentValues.get(data[i]) > currentValues.get(data[j])) inv++;
+        return inv;
+    }
+
+    private int inversionsAfterSwap(int a, int b) {
+        String[] copy = Arrays.copyOf(levelData, levelData.length);
+        String tmp = copy[a]; copy[a] = copy[b]; copy[b] = tmp;
+        return countInversions(copy);
+    }
+
+    private boolean isGoodSwap(int a, int b) {
+        return inversionsAfterSwap(a, b) < countInversions(levelData);
     }
 
     // =========================================================================
@@ -428,9 +462,7 @@ public class StageOne implements Initializable {
         canvas.setOnMousePressed(null);
         canvas.setOnMouseDragged(null);
         canvas.setOnMouseReleased(null);
-
         if (won) SaveManager.unlockNext("stage1");
-
         showEndOverlay(won);
     }
 
@@ -520,10 +552,7 @@ public class StageOne implements Initializable {
             try {
                 URL resource = getClass().getResource(
                         "/com/example/kaiajourneythroughgrief/stage_two.fxml");
-                if (resource == null) {
-                    System.err.println("[StageOne] stage_two.fxml not found");
-                    return;
-                }
+                if (resource == null) { System.err.println("[StageOne] stage_two.fxml not found"); return; }
                 FXMLLoader loader = new FXMLLoader(resource);
                 Scene scene = new Scene(loader.load());
                 ((Stage) battleArea.getScene().getWindow()).setScene(scene);
@@ -560,7 +589,7 @@ public class StageOne implements Initializable {
         battleArea.getChildren().removeIf(n -> n instanceof StackPane);
         gameOver     = false;
         lastNanoTime = -1;
-        arraysSolved = 0;   // reset counter on restart
+        arraysSolved = 0;
         setMeter(0.5);
         setupMouseHandlers();
         generateRandomLevel();
@@ -591,23 +620,23 @@ public class StageOne implements Initializable {
     }
 
     // =========================================================================
-    // LEVEL GENERATION
+    // LEVEL GENERATION — always ascending, plain numbers
     // =========================================================================
 
     private void generateRandomLevel() {
         levelData     = new String[NUMBER_COUNT];
         currentValues = new HashMap<>();
         for (int i = 0; i < NUMBER_COUNT; i++) {
-            int num    = random.nextInt(90) + 10;
+            int    num = random.nextInt(90) + 10;   // 10–99
             String key = num + "_" + i;
             levelData[i] = key;
             currentValues.put(key, num);
         }
-        currentMode = random.nextBoolean() ? SortMode.ASCENDING : SortMode.DESCENDING;
+        // No SortMode randomisation — Stage 1 is always ascending
     }
 
     // =========================================================================
-    // SORT LOGIC
+    // SORT LOGIC — always ascending
     // =========================================================================
 
     private int getValue(int index) { return currentValues.get(levelData[index]); }
@@ -617,27 +646,20 @@ public class StageOne implements Initializable {
     }
 
     private boolean isSorted() {
-        for (int i = 1; i < NUMBER_COUNT; i++) {
-            if (currentMode == SortMode.ASCENDING  && getValue(i-1) > getValue(i)) return false;
-            if (currentMode == SortMode.DESCENDING && getValue(i-1) < getValue(i)) return false;
-        }
+        for (int i = 1; i < NUMBER_COUNT; i++)
+            if (getValue(i - 1) > getValue(i)) return false;
         return true;
     }
 
     private boolean isPositionCorrect(int pos) {
-        int[] sorted = sortedSnapshot(currentMode == SortMode.ASCENDING);
-        return getValue(pos) == sorted[pos];
+        return getValue(pos) == sortedSnapshot()[pos];
     }
 
-    private int[] sortedSnapshot(boolean ascending) {
+    /** Returns a sorted (ascending) snapshot of current values. */
+    private int[] sortedSnapshot() {
         int[] vals = new int[NUMBER_COUNT];
         for (int i = 0; i < NUMBER_COUNT; i++) vals[i] = getValue(i);
         Arrays.sort(vals);
-        if (!ascending) {
-            for (int i = 0, j = vals.length - 1; i < j; i++, j--) {
-                int tmp = vals[i]; vals[i] = vals[j]; vals[j] = tmp;
-            }
-        }
         return vals;
     }
 
@@ -646,10 +668,6 @@ public class StageOne implements Initializable {
         if (isPositionCorrect(a)) c++;
         if (isPositionCorrect(b)) c++;
         return c;
-    }
-
-    private String themeColor() {
-        return currentMode == SortMode.DESCENDING ? C_DESCENDING : C_ASCENDING;
     }
 
     // =========================================================================
@@ -671,9 +689,9 @@ public class StageOne implements Initializable {
         double totalH    = totalRows * BOX_HEIGHT + (totalRows - 1) * SPACING;
         double startY    = (canvas.getHeight() - totalH) / 2.0 + 16;
 
-        int itemsInRow = Math.min(maxPerRow, NUMBER_COUNT - row * maxPerRow);
-        double rowWidth = itemsInRow * boxWidth + (itemsInRow - 1) * SPACING;
-        double startX   = (canvas.getWidth() - rowWidth) / 2.0;
+        int    itemsInRow = Math.min(maxPerRow, NUMBER_COUNT - row * maxPerRow);
+        double rowWidth   = itemsInRow * boxWidth + (itemsInRow - 1) * SPACING;
+        double startX     = (canvas.getWidth() - rowWidth) / 2.0;
 
         return new double[]{
                 startX + col * (boxWidth + SPACING),
@@ -697,7 +715,7 @@ public class StageOne implements Initializable {
             double[] pos = boxPosition(i);
             double   cx  = pos[0] + boxWidth   / 2;
             double   cy  = pos[1] + BOX_HEIGHT / 2;
-            double   d2  = (x-cx)*(x-cx) + (y-cy)*(y-cy);
+            double   d2  = (x - cx) * (x - cx) + (y - cy) * (y - cy);
             if (d2 < bestD) { bestD = d2; best = i; }
         }
         return best;
@@ -733,7 +751,8 @@ public class StageOne implements Initializable {
             dragging = false;
             int target = nearestIndex(e.getX(), e.getY());
             if (target != -1 && target != dragIndex) {
-                animateSwap(dragIndex, target);
+                boolean goodMove = isGoodSwap(dragIndex, target);
+                animateSwap(dragIndex, target, goodMove);
             } else {
                 dragIndex = -1;
                 drawArray();
@@ -758,16 +777,14 @@ public class StageOne implements Initializable {
         gc.setTextAlign(TextAlignment.LEFT);
         gc.fillText("OBJECTIVE", 14, 14);
 
-        String modeLabel = currentMode == SortMode.DESCENDING ? "Sort Descending" : "Sort Ascending";
-        gc.setFill(Color.web(themeColor(), 0.85));
+        gc.setFill(Color.web(C_THEME, 0.85));
         gc.setFont(Font.font("Georgia", FontPosture.ITALIC, 12));
-        gc.fillText(modeLabel, 14, 27);
+        gc.fillText("Sort Ascending", 14, 27);
 
-        gc.setStroke(Color.web(themeColor(), 0.4));
+        gc.setStroke(Color.web(C_THEME, 0.4));
         gc.setLineWidth(1);
         gc.strokeLine(14, 30, 110, 30);
 
-        // ── Progress counter — shown when more than 1 array is required ───
         if (ARRAYS_TO_WIN > 1) {
             String progress = (arraysSolved + 1) + "  /  " + ARRAYS_TO_WIN;
             gc.setFill(Color.web(C_META_TEXT));
@@ -789,7 +806,7 @@ public class StageOne implements Initializable {
     }
 
     private void drawBox(double x, double y, String text, boolean correct, boolean isDragged) {
-        String theme = correct ? C_COMPLETION : themeColor();
+        String theme = correct ? C_COMPLETION : C_THEME;
 
         gc.setFill(Color.web(C_CARD_BG));
         gc.fillRoundRect(x, y, boxWidth, BOX_HEIGHT, CARD_RADIUS, CARD_RADIUS);
@@ -822,7 +839,7 @@ public class StageOne implements Initializable {
     // SWAP ANIMATION
     // =========================================================================
 
-    private void animateSwap(int from, int to) {
+    private void animateSwap(int from, int to, boolean goodMove) {
         animating = true;
 
         double[] fp = boxPosition(from);
@@ -835,9 +852,9 @@ public class StageOne implements Initializable {
 
         for (int i = 0; i <= SWAP_FRAMES; i++) {
             double t  = easeInOutQuad(i / (double) SWAP_FRAMES);
-            double ax = fp[0] + (tp[0] - fp[0]) * t,  ay = fp[1] + (tp[1] - fp[1]) * t;
-            double bx = tp[0] + (fp[0] - tp[0]) * t,  by = tp[1] + (fp[1] - tp[1]) * t;
-            final double fax=ax, fay=ay, fbx=bx, fby=by;
+            double ax = fp[0] + (tp[0] - fp[0]) * t, ay = fp[1] + (tp[1] - fp[1]) * t;
+            double bx = tp[0] + (fp[0] - tp[0]) * t, by = tp[1] + (fp[1] - tp[1]) * t;
+            final double fax = ax, fay = ay, fbx = bx, fby = by;
 
             timeline.getKeyFrames().add(new KeyFrame(
                     total.multiply(i / (double) SWAP_FRAMES),
@@ -858,7 +875,15 @@ public class StageOne implements Initializable {
             swapElements(from, to);
             dragIndex = -1;
             animating = false;
-            gainHealth(countCorrectAfterSwap(from, to));
+
+            if (goodMove) {
+                gainHealth(countCorrectAfterSwap(from, to));
+                shakePlayer();
+            } else {
+                setMeter(playerMeter - LOSS_PER_WRONG);
+                shakeEnemy();
+                if (playerMeter <= 0.0 && !gameOver) triggerGameOver(false);
+            }
             drawArray();
         });
 
@@ -866,6 +891,6 @@ public class StageOne implements Initializable {
     }
 
     private double easeInOutQuad(double t) {
-        return t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
+        return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
     }
 }
