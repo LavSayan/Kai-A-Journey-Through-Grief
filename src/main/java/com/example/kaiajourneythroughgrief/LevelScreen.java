@@ -14,7 +14,11 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.effect.GaussianBlur;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.Node;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.CycleMethod;
@@ -31,11 +35,23 @@ import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
+// ── IMPORT YOUR DIALOGUE CLASSES HERE ──────────────────────────────────
+import com.example.kaiajourneythroughgrief.dialogues.Dialogue1;
+import com.example.kaiajourneythroughgrief.dialogues.Dialogue2;
+import com.example.kaiajourneythroughgrief.dialogues.Dialogue3;
+import com.example.kaiajourneythroughgrief.dialogues.Dialogue4;
+import com.example.kaiajourneythroughgrief.dialogues.Dialogue5;
+import com.example.kaiajourneythroughgrief.dialogues.Dialogue6;
+import com.example.kaiajourneythroughgrief.dialogues.Dialogue7;
+import com.example.kaiajourneythroughgrief.dialogues.Dialogue8;
+
 import java.net.URL;
 import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.ResourceBundle;
+import java.util.function.Supplier;
 
 public class LevelScreen implements Initializable {
 
@@ -53,6 +69,17 @@ public class LevelScreen implements Initializable {
         put("stage3", "stage_three.fxml");
         put("stage4", "stage_four.fxml");
         put("stage5", "stage_five.fxml");
+    }};
+
+    // ── Stage → Pre-Intro Dialogue mapping ────────────────────────────────
+    // Maps stage IDs to their corresponding DialogueConfig suppliers
+    // Each Supplier returns a DialogueConfig for that stage
+    private static final Map<String, Supplier<DialogueConfig>> STAGE_DIALOGUE = new LinkedHashMap<>() {{
+        put("stage1", Dialogue3::getConfig);      // Stage 1 uses Dialogue1 (Bedroom scene)
+        put("stage2", Dialogue4::getConfig);      // Stage 2 uses Dialogue2 (Void scene)
+        put("stage3", Dialogue5::getConfig);      // Stage 3 uses Dialogue3 (Forest scene)
+        put("stage4", Dialogue6::getConfig);      // Stage 4 uses Dialogue4 (City scene)
+        put("stage5", Dialogue7::getConfig);      // Stage 5 uses Dialogue5 (Temple scene)
     }};
 
     private static final double BAND_H = H / 5.0;
@@ -377,6 +404,9 @@ public class LevelScreen implements Initializable {
         titleLbl.setAlignment(Pos.CENTER);
         titleLbl.setEffect(new DropShadow(12, Color.web("#000000", 0.9)));
 
+        // Stage preview image or placeholder (consistent with other stage UIs)
+        Node previewNode = createStagePreview(stageId, cardW - 88, 120);
+
         // Divider
         Rectangle divider = new Rectangle(cardW - 88, 1);
         divider.setFill(Color.web(colorHex, 0.3));
@@ -408,7 +438,7 @@ public class LevelScreen implements Initializable {
         btnRow.setAlignment(Pos.CENTER);
 
         card.getChildren().addAll(
-                eyebrow, titleLbl, divider,
+                eyebrow, titleLbl, previewNode, divider,
                 enemyEyebrow, enemyName, enemyDesc,
                 btnRow
         );
@@ -454,13 +484,13 @@ public class LevelScreen implements Initializable {
             toBlack.setFromValue(0.0);
             toBlack.setToValue(1.0);
 
-            // 3. Load the stage after blackout completes
+            // 3. Load either dialogue or stage after blackout completes
             SequentialTransition seq = new SequentialTransition(
                     cardOut,
                     toBlack,
                     new PauseTransition(Duration.millis(120))
             );
-            seq.setOnFinished(ev -> loadStage(stageId));
+            seq.setOnFinished(ev -> loadStageOrDialogue(stageId, blackout));
             seq.play();
         });
 
@@ -474,6 +504,53 @@ public class LevelScreen implements Initializable {
 
         // Clicking the backdrop also cancels
         backdrop.setOnMouseClicked(e -> cancelBtn.fire());
+    }
+
+    // ── Transition helpers ─────────────────────────────────────────────────
+
+    /**
+     * Loads dialogue if available for the stage, otherwise goes straight to the stage.
+     * Each stage can have its own dialogue using the STAGE_DIALOGUE map.
+     */
+    private void loadStageOrDialogue(String stageId, Rectangle blackout) {
+        // Get the dialogue supplier for this stage
+        Supplier<DialogueConfig> dialogueSupplier = STAGE_DIALOGUE.get(stageId);
+
+        if (dialogueSupplier != null) {
+            try {
+                // Get the DialogueConfig from the supplier (e.g., Dialogue1.getConfig())
+                DialogueConfig config = dialogueSupplier.get();
+
+                // Create the dialogue screen with the config
+                DialogueScreen dialogueScreen = new DialogueScreen(
+                        config,
+                        () -> loadStage(stageId)  // After dialogue completes, load the stage
+                );
+
+                dialogueScreen.setPrefSize(W, H);
+                canvas.getChildren().add(dialogueScreen);
+
+                // Fade out the blackout screen
+                if (blackout != null) {
+                    FadeTransition fadeOutBlack = new FadeTransition(Duration.millis(300), blackout);
+                    fadeOutBlack.setFromValue(1.0);
+                    fadeOutBlack.setToValue(0.0);
+                    fadeOutBlack.setOnFinished(e -> canvas.getChildren().remove(blackout));
+                    fadeOutBlack.play();
+                }
+
+            } catch (Exception ex) {
+                System.err.println("[LevelScreen] Failed to load dialogue for stage: " + stageId + " (" + ex.getMessage() + ")");
+                ex.printStackTrace();
+                if (blackout != null) canvas.getChildren().remove(blackout);
+                loadStage(stageId);
+            }
+        } else {
+            // No dialogue for this stage, skip straight to the stage
+            System.out.println("[LevelScreen] No dialogue configured for " + stageId + ", loading stage directly.");
+            if (blackout != null) canvas.getChildren().remove(blackout);
+            loadStage(stageId);
+        }
     }
 
     // ── Intro card button factory ──────────────────────────────────────────
@@ -515,7 +592,7 @@ public class LevelScreen implements Initializable {
 
     /**
      * Loads the FXML for the given stage and replaces the scene.
-     * Only called after the fade-to-black completes.
+     * Only called after the fade-to-black completes (or dialogue finishes).
      */
     private void loadStage(String stageId) {
         String fxmlFile = STAGE_FXML.get(stageId);
@@ -544,10 +621,6 @@ public class LevelScreen implements Initializable {
     }
 
     // =========================================================================
-    // NOTICE POPUP  (locked stages)
-    // =========================================================================
-
-    // =========================================================================
     // SHARED OVERLAY HELPERS
     // =========================================================================
 
@@ -568,6 +641,52 @@ public class LevelScreen implements Initializable {
             case 1 -> "I"; case 2 -> "II"; case 3 -> "III";
             case 4 -> "IV"; case 5 -> "V"; default -> String.valueOf(n);
         };
+    }
+
+    private Node createStagePreview(String stageId, double width, double height) {
+        ImageView preview = loadImage("assets/" + stageId + "/background.png", width, height, false);
+        if (preview != null) {
+            preview.setFitWidth(width);
+            preview.setFitHeight(height);
+            preview.setPreserveRatio(true);
+            preview.setSmooth(true);
+            preview.setStyle("-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 12, 0, 0, 2);");
+            return preview;
+        }
+
+        Rectangle placeholder = new Rectangle(width, height);
+        placeholder.setFill(Color.web("#1A1A2B"));
+        placeholder.setStroke(Color.web("#3A3A56"));
+        placeholder.setStrokeWidth(1);
+        placeholder.setArcWidth(6);
+        placeholder.setArcHeight(6);
+
+        Label missing = new Label("No Preview Available");
+        missing.setFont(Font.font("Georgia", FontPosture.ITALIC, 10));
+        missing.setTextFill(Color.web("#7A7A9A"));
+
+        StackPane placeholderPane = new StackPane(placeholder, missing);
+        placeholderPane.setMaxWidth(width);
+        placeholderPane.setMaxHeight(height);
+
+        return placeholderPane;
+    }
+
+    private ImageView loadImage(String filename, Double fitWidth, Double fitHeight, boolean preserve) {
+        try {
+            URL res = getClass().getResource(filename);
+            if (res == null) {
+                return null;
+            }
+            Image img = new Image(res.toExternalForm(), false);
+            ImageView iv = new ImageView(img);
+            if (fitWidth != null) iv.setFitWidth(fitWidth);
+            if (fitHeight != null) iv.setFitHeight(fitHeight);
+            iv.setPreserveRatio(preserve);
+            return iv;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     // =========================================================================

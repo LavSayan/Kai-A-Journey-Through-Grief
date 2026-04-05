@@ -29,6 +29,7 @@ import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
+import com.example.kaiajourneythroughgrief.dialogues.Dialogue7;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -141,6 +142,7 @@ public class StageFour implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        MusicPlayer.getInstance().play("assets/stage4/bgmusic.mp3");
         healthBar.setVisible(false);
         healthBar.setManaged(false);
 
@@ -536,33 +538,32 @@ public class StageFour implements Initializable {
     }
 
     private void navigateToNextStage() {
-        Rectangle blackout = new Rectangle();
-        blackout.widthProperty().bind(battleArea.widthProperty());
-        blackout.heightProperty().bind(battleArea.heightProperty());
-        blackout.setFill(Color.BLACK);
-        blackout.setOpacity(0);
-        AnchorPane.setTopAnchor(blackout,    0.0);
-        AnchorPane.setBottomAnchor(blackout, 0.0);
-        AnchorPane.setLeftAnchor(blackout,   0.0);
-        AnchorPane.setRightAnchor(blackout,  0.0);
-        battleArea.getChildren().add(blackout);
-
-        FadeTransition toBlack = new FadeTransition(Duration.millis(600), blackout);
-        toBlack.setFromValue(0.0);
-        toBlack.setToValue(1.0);
-        toBlack.setOnFinished(ev -> {
-            try {
-                URL resource = getClass().getResource(
-                        "/com/example/kaiajourneythroughgrief/stage_five.fxml");
-                if (resource == null) { System.err.println("[StageFour] next fxml not found"); return; }
-                FXMLLoader loader = new FXMLLoader(resource);
-                Scene scene = new Scene(loader.load());
-                ((Stage) battleArea.getScene().getWindow()).setScene(scene);
-            } catch (Exception ex) {
-                System.err.println("[StageFour] Failed to navigate: " + ex.getMessage());
+        MusicPlayer.getInstance().setVolume(0.5);
+        
+        DialogueConfig config = Dialogue7.getConfig();
+        DialogueScreen dialogueScreen = new DialogueScreen(
+                config,
+                this::loadStageFive
+        );
+        
+        dialogueScreen.setPrefSize(battleArea.getWidth(), battleArea.getHeight());
+        battleArea.getChildren().clear();
+        battleArea.getChildren().add(dialogueScreen);
+    }
+    
+    private void loadStageFive() {
+        try {
+            URL resource = getClass().getResource("/com/example/kaiajourneythroughgrief/stage_five.fxml");
+            if (resource == null) {
+                System.err.println("[StageFour] stage_five.fxml not found");
+                return;
             }
-        });
-        toBlack.play();
+            FXMLLoader loader = new FXMLLoader(resource);
+            Scene scene = new Scene(loader.load());
+            ((Stage) battleArea.getScene().getWindow()).setScene(scene);
+        } catch (Exception ex) {
+            System.err.println("[StageFour] Failed to load StageFive: " + ex.getMessage());
+        }
     }
 
     private Button makeOverlayButton(String label, String accentColor) {
@@ -655,19 +656,64 @@ public class StageFour implements Initializable {
         levelData      = new String[NUMBER_COUNT];
         equationLabels = new String[NUMBER_COUNT];
         currentValues  = new HashMap<>();
-
+        
+        // Step 1: Generate equations with their x values
+        int[] xValues = new int[NUMBER_COUNT];
         for (int i = 0; i < NUMBER_COUNT; i++) {
             Object[] eq    = makeEquation();
             String   label = (String)  eq[0];
             int      x     = (Integer) eq[1];
-
-            // Key is unique even if two tiles share the same x value
-            String key = x + "_" + i;
-            levelData[i]      = key;
+            
+            xValues[i] = x;
             equationLabels[i] = label;
-            currentValues.put(key, x);
+        }
+        
+        // Step 2: Create a sorted copy of x values
+        int[] sortedXValues = Arrays.copyOf(xValues, NUMBER_COUNT);
+        Arrays.sort(sortedXValues);
+        
+        // Step 3: Apply reverse selection sort to unsort
+        int[] unSortedXValues = Arrays.copyOf(sortedXValues, NUMBER_COUNT);
+        applyReverseSelectionSort(unSortedXValues);
+        
+        // Step 4: Reorder equations based on unsorted x values
+        String[] reorderedLabels = new String[NUMBER_COUNT];
+        for (int i = 0; i < NUMBER_COUNT; i++) {
+            // Find an equation with x value matching unSortedXValues[i]
+            for (int j = 0; j < NUMBER_COUNT; j++) {
+                if (xValues[j] == unSortedXValues[i]) {
+                    reorderedLabels[i] = equationLabels[j];
+                    xValues[j] = -1;  // Mark as used
+                    break;
+                }
+            }
+        }
+        equationLabels = reorderedLabels;
+        
+        // Step 5: Build levelData with reordered x values
+        for (int i = 0; i < NUMBER_COUNT; i++) {
+            String key = unSortedXValues[i] + "_" + i;
+            levelData[i] = key;
+            currentValues.put(key, unSortedXValues[i]);
         }
         // Always ascending — no mode randomisation
+    }
+    
+    /**
+     * Applies reverse selection sort steps to unsort an array.
+     */
+    private void applyReverseSelectionSort(int[] arr) {
+        int passes = Math.max(2, NUMBER_COUNT / 3);
+        for (int pass = 0; pass < passes; pass++) {
+            for (int i = NUMBER_COUNT - 1; i > 0; i--) {
+                int j = random.nextInt(i + 1);
+                if (i != j) {
+                    int temp = arr[i];
+                    arr[i] = arr[j];
+                    arr[j] = temp;
+                }
+            }
+        }
     }
 
     // =========================================================================

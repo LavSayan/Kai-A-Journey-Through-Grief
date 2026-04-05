@@ -30,6 +30,7 @@ import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
+import com.example.kaiajourneythroughgrief.dialogues.Dialogue6;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -159,6 +160,7 @@ public class StageThree implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        MusicPlayer.getInstance().play("assets/stage3/bgmusic.mp3");
         healthBar.setVisible(false);
         healthBar.setManaged(false);
 
@@ -554,33 +556,32 @@ public class StageThree implements Initializable {
     }
 
     private void navigateToNextStage() {
-        Rectangle blackout = new Rectangle();
-        blackout.widthProperty().bind(battleArea.widthProperty());
-        blackout.heightProperty().bind(battleArea.heightProperty());
-        blackout.setFill(Color.BLACK);
-        blackout.setOpacity(0);
-        AnchorPane.setTopAnchor(blackout,    0.0);
-        AnchorPane.setBottomAnchor(blackout, 0.0);
-        AnchorPane.setLeftAnchor(blackout,   0.0);
-        AnchorPane.setRightAnchor(blackout,  0.0);
-        battleArea.getChildren().add(blackout);
-
-        FadeTransition toBlack = new FadeTransition(Duration.millis(600), blackout);
-        toBlack.setFromValue(0.0);
-        toBlack.setToValue(1.0);
-        toBlack.setOnFinished(ev -> {
-            try {
-                URL resource = getClass().getResource(
-                        "/com/example/kaiajourneythroughgrief/stage_four.fxml");
-                if (resource == null) { System.err.println("[StageThree] next fxml not found"); return; }
-                FXMLLoader loader = new FXMLLoader(resource);
-                Scene scene = new Scene(loader.load());
-                ((Stage) battleArea.getScene().getWindow()).setScene(scene);
-            } catch (Exception ex) {
-                System.err.println("[StageThree] Failed to navigate: " + ex.getMessage());
+        MusicPlayer.getInstance().setVolume(0.5);
+        
+        DialogueConfig config = Dialogue6.getConfig();
+        DialogueScreen dialogueScreen = new DialogueScreen(
+                config,
+                this::loadStageFour
+        );
+        
+        dialogueScreen.setPrefSize(battleArea.getWidth(), battleArea.getHeight());
+        battleArea.getChildren().clear();
+        battleArea.getChildren().add(dialogueScreen);
+    }
+    
+    private void loadStageFour() {
+        try {
+            URL resource = getClass().getResource("/com/example/kaiajourneythroughgrief/stage_four.fxml");
+            if (resource == null) {
+                System.err.println("[StageThree] stage_four.fxml not found");
+                return;
             }
-        });
-        toBlack.play();
+            FXMLLoader loader = new FXMLLoader(resource);
+            Scene scene = new Scene(loader.load());
+            ((Stage) battleArea.getScene().getWindow()).setScene(scene);
+        } catch (Exception ex) {
+            System.err.println("[StageThree] Failed to load StageFour: " + ex.getMessage());
+        }
     }
 
     private Button makeOverlayButton(String label, String accentColor) {
@@ -699,19 +700,64 @@ public class StageThree implements Initializable {
         levelData        = new String[NUMBER_COUNT];
         expressionLabels = new String[NUMBER_COUNT];
         currentValues    = new HashMap<>();
-
+        
+        // Step 1: Generate expressions with their results
+        int[] results = new int[NUMBER_COUNT];
         for (int i = 0; i < NUMBER_COUNT; i++) {
             Object[] expr = makeExpression();
             String   displayLabel = (String)  expr[0];
             int      result       = (Integer) expr[1];
-
-            // Key must be unique even if two expressions share the same result
-            String key = result + "_" + i;
-            levelData[i]        = key;
+            
+            results[i] = result;
             expressionLabels[i] = displayLabel;
-            currentValues.put(key, result);
+        }
+        
+        // Step 2: Create a sorted copy of results
+        int[] sortedResults = Arrays.copyOf(results, NUMBER_COUNT);
+        Arrays.sort(sortedResults);
+        
+        // Step 3: Apply reverse selection sort to unsort
+        int[] unSortedResults = Arrays.copyOf(sortedResults, NUMBER_COUNT);
+        applyReverseSelectionSort(unSortedResults);
+        
+        // Step 4: Reorder expressions based on unsorted results
+        String[] reorderedLabels = new String[NUMBER_COUNT];
+        for (int i = 0; i < NUMBER_COUNT; i++) {
+            // Find an expression with result matching unSortedResults[i]
+            for (int j = 0; j < NUMBER_COUNT; j++) {
+                if (results[j] == unSortedResults[i]) {
+                    reorderedLabels[i] = expressionLabels[j];
+                    results[j] = -1;  // Mark as used
+                    break;
+                }
+            }
+        }
+        expressionLabels = reorderedLabels;
+        
+        // Step 5: Build levelData with reordered results
+        for (int i = 0; i < NUMBER_COUNT; i++) {
+            String key = unSortedResults[i] + "_" + i;
+            levelData[i] = key;
+            currentValues.put(key, unSortedResults[i]);
         }
         // Always ascending — no mode randomisation
+    }
+    
+    /**
+     * Applies reverse selection sort steps to unsort an array.
+     */
+    private void applyReverseSelectionSort(int[] arr) {
+        int passes = Math.max(2, NUMBER_COUNT / 3);
+        for (int pass = 0; pass < passes; pass++) {
+            for (int i = NUMBER_COUNT - 1; i > 0; i--) {
+                int j = random.nextInt(i + 1);
+                if (i != j) {
+                    int temp = arr[i];
+                    arr[i] = arr[j];
+                    arr[j] = temp;
+                }
+            }
+        }
     }
 
     // =========================================================================

@@ -121,6 +121,18 @@ public class MusicPlayer {
         return player != null && player.getStatus() == MediaPlayer.Status.PLAYING;
     }
 
+    /** Sets the volume of the music player (0.0 – 1.0). */
+    public void setVolume(double volume) {
+        if (player != null) {
+            player.setVolume(Math.max(0.0, Math.min(1.0, volume)));
+        }
+    }
+
+    /** Gets the current volume. */
+    public double getVolume() {
+        return player != null ? player.getVolume() : VOLUME;
+    }
+
     // =========================================================================
     // PRIVATE
     // =========================================================================

@@ -29,7 +29,7 @@ import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
-import java.io.IOException;
+import com.example.kaiajourneythroughgrief.dialogues.Dialogue4;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -138,6 +138,7 @@ public class StageOne implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        MusicPlayer.getInstance().play("assets/stage1/bgmusic.mp3");
         healthBar.setVisible(false);
         healthBar.setManaged(false);
 
@@ -534,33 +535,32 @@ public class StageOne implements Initializable {
     }
 
     private void navigateToNextStage() {
-        Rectangle blackout = new Rectangle();
-        blackout.widthProperty().bind(battleArea.widthProperty());
-        blackout.heightProperty().bind(battleArea.heightProperty());
-        blackout.setFill(Color.BLACK);
-        blackout.setOpacity(0);
-        AnchorPane.setTopAnchor(blackout,    0.0);
-        AnchorPane.setBottomAnchor(blackout, 0.0);
-        AnchorPane.setLeftAnchor(blackout,   0.0);
-        AnchorPane.setRightAnchor(blackout,  0.0);
-        battleArea.getChildren().add(blackout);
-
-        FadeTransition toBlack = new FadeTransition(Duration.millis(600), blackout);
-        toBlack.setFromValue(0.0);
-        toBlack.setToValue(1.0);
-        toBlack.setOnFinished(ev -> {
-            try {
-                URL resource = getClass().getResource(
-                        "/com/example/kaiajourneythroughgrief/stage_two.fxml");
-                if (resource == null) { System.err.println("[StageOne] stage_two.fxml not found"); return; }
-                FXMLLoader loader = new FXMLLoader(resource);
-                Scene scene = new Scene(loader.load());
-                ((Stage) battleArea.getScene().getWindow()).setScene(scene);
-            } catch (Exception ex) {
-                System.err.println("[StageOne] Failed to load next stage: " + ex.getMessage());
+        MusicPlayer.getInstance().setVolume(0.5);
+        
+        DialogueConfig config = Dialogue4.getConfig();
+        DialogueScreen dialogueScreen = new DialogueScreen(
+                config,
+                this::loadStageTwo
+        );
+        
+        dialogueScreen.setPrefSize(battleArea.getWidth(), battleArea.getHeight());
+        battleArea.getChildren().clear();
+        battleArea.getChildren().add(dialogueScreen);
+    }
+    
+    private void loadStageTwo() {
+        try {
+            URL resource = getClass().getResource("/com/example/kaiajourneythroughgrief/stage_two.fxml");
+            if (resource == null) {
+                System.err.println("[StageOne] stage_two.fxml not found");
+                return;
             }
-        });
-        toBlack.play();
+            FXMLLoader loader = new FXMLLoader(resource);
+            Scene scene = new Scene(loader.load());
+            ((Stage) battleArea.getScene().getWindow()).setScene(scene);
+        } catch (Exception ex) {
+            System.err.println("[StageOne] Failed to load StageTwo: " + ex.getMessage());
+        }
     }
 
     private Button makeOverlayButton(String label, String accentColor) {
@@ -620,19 +620,57 @@ public class StageOne implements Initializable {
     }
 
     // =========================================================================
-    // LEVEL GENERATION — always ascending, plain numbers
+    // LEVEL GENERATION — using selection sort to create unsorted array
     // =========================================================================
 
     private void generateRandomLevel() {
         levelData     = new String[NUMBER_COUNT];
         currentValues = new HashMap<>();
+        
+        // Step 1: Generate random numbers between 1-100
+        int[] randomValues = new int[NUMBER_COUNT];
         for (int i = 0; i < NUMBER_COUNT; i++) {
-            int    num = random.nextInt(90) + 10;   // 10–99
-            String key = num + "_" + i;
+            randomValues[i] = random.nextInt(100) + 1;  // 1–100
+        }
+        
+        // Step 2: Sort them in ascending order
+        int[] sortedValues = Arrays.copyOf(randomValues, NUMBER_COUNT);
+        Arrays.sort(sortedValues);
+        
+        // Step 3: Apply reverse selection sort to create unsorted state
+        int[] unSortedValues = Arrays.copyOf(sortedValues, NUMBER_COUNT);
+        applyReverseSelectionSort(unSortedValues);
+        
+        // Step 4: Build levelData and currentValues map
+        for (int i = 0; i < NUMBER_COUNT; i++) {
+            String key = unSortedValues[i] + "_" + i;
             levelData[i] = key;
-            currentValues.put(key, num);
+            currentValues.put(key, unSortedValues[i]);
         }
         // No SortMode randomisation — Stage 1 is always ascending
+    }
+    
+    /**
+     * Applies reverse selection sort steps to unsort an array.
+     * Selection sort finds the minimum and places it at the front.
+     * We reverse this by randomly swapping sorted positions.
+     */
+    private void applyReverseSelectionSort(int[] arr) {
+        // Perform several reverse selection sort passes to thoroughly unsort the array
+        int passes = Math.max(2, NUMBER_COUNT / 3);
+        
+        for (int pass = 0; pass < passes; pass++) {
+            // For each position from end to start, find a random position
+            // and swap to undo the sorting work
+            for (int i = NUMBER_COUNT - 1; i > 0; i--) {
+                int j = random.nextInt(i + 1);
+                if (i != j) {
+                    int temp = arr[i];
+                    arr[i] = arr[j];
+                    arr[j] = temp;
+                }
+            }
+        }
     }
 
     // =========================================================================

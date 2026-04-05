@@ -18,7 +18,13 @@ import javafx.scene.text.*;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
+// Import your dialogue class
+import com.example.kaiajourneythroughgrief.dialogues.Dialogue1;
+import com.example.kaiajourneythroughgrief.dialogues.Dialogue2;
+
+
 import java.net.URL;
+import java.util.List;
 import java.util.Random;
 import java.util.ResourceBundle;
 
@@ -333,11 +339,14 @@ public class Menu implements Initializable {
                     // Progress exists — warn before wiping
                     showNewGameWarning();
                 } else {
-                    // No progress — start fresh with no warning
-                    navigateTo("level_screen.fxml");
+                    // No progress — start fresh with intro dialogue
+                    showIntroDialogue();
                 }
             }
-            case "continue" -> navigateTo("level_screen.fxml");
+            case "continue" -> {
+                // Go straight to level screen without dialogue
+                navigateTo("level_screen.fxml");
+            }
             case "quit" -> {
                 MusicPlayer.getInstance().fadeOutAndStop(600);
                 PauseTransition pause = new PauseTransition(Duration.millis(650));
@@ -426,11 +435,11 @@ public class Menu implements Initializable {
         fadeIn.setToValue(1.0);
         fadeIn.play();
 
-        // START FRESH — wipe save then navigate
+        // START FRESH — wipe save then show intro dialogue
         startFreshBtn.setOnAction(e -> {
             dismissOverlay(overlay);
             SaveManager.reset();
-            navigateTo("level_screen.fxml");
+            showIntroDialogue();
         });
 
         // KEEP PROGRESS — just dismiss
@@ -439,6 +448,54 @@ public class Menu implements Initializable {
         // Backdrop click also dismisses
         backdrop.setOnMouseClicked(e -> dismissOverlay(overlay));
         card.setOnMouseClicked(e -> e.consume());
+    }
+
+    // =========================================================================
+    // INTRO DIALOGUE
+    // =========================================================================
+
+    /**
+     * Shows Dialogue1 when starting a new game.
+     * Dialogue1 is configured with all assets (background, characters, music, etc).
+     * After dialogue completes, transitions to level screen.
+     */
+    private void showIntroDialogue() {
+        // 1. Define the sequence of dialogues you want to play
+        List<DialogueConfig> sequence = List.of(
+                Dialogue1.getConfig(),
+                Dialogue2.getConfig()
+                // can add Dialogue3.getConfig() here later
+        );
+
+        // 2. Start the sequence at index 0
+        playDialogueSequence(sequence, 0);
+    }
+
+    private void playDialogueSequence(List<DialogueConfig> sequence, int index) {
+        // If we've played all dialogues, navigate to the game
+        if (index >= sequence.size()) {
+            navigateTo("level_screen.fxml");
+            return;
+        }
+
+        try {
+            // Create the current dialogue screen
+            DialogueScreen currentDialogue = new DialogueScreen(
+                    sequence.get(index),
+                    () -> {
+                        // ON FINISH: Remove current and play the next index
+                        canvas.getChildren().removeIf(node -> node instanceof DialogueScreen);
+                        playDialogueSequence(sequence, index + 1);
+                    }
+            );
+
+            currentDialogue.setPrefSize(W, H);
+            canvas.getChildren().add(currentDialogue);
+
+        } catch (Exception ex) {
+            System.err.println("[Menu] Dialogue sequence failed at index " + index + ": " + ex.getMessage());
+            navigateTo("level_screen.fxml");
+        }
     }
 
     private Button makeWarningButton(String label, String colorHex, boolean isPrimary) {
