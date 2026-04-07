@@ -69,9 +69,9 @@ public class StageFive implements Initializable {
     private static final String C_LOCKED       = "#9370DB";
 
     // ── Assets ────────────────────────────────────────────────────────────
-    private static final String IMG_BACKGROUND = "assets/stage2/background.png";
-    private static final String IMG_PLAYER     = "assets/stage2/player.gif";
-    private static final String IMG_ENEMY      = "assets/stage2/enemy.gif";
+    private static final String IMG_BACKGROUND = "assets/stage5/background.png";
+    private static final String IMG_PLAYER     = "assets/stage5/player.gif";
+    private static final String IMG_ENEMY      = "assets/stage5/enemy.gif";
 
     // ── Character size ────────────────────────────────────────────────────
     private static final double CHAR_WIDTH  = 300;
@@ -93,14 +93,14 @@ public class StageFive implements Initializable {
 
     // ── Locked tiles config ────────────────────────────────────────────────
     private static final int LOCKED_TILES_INITIAL    = 4;
-    private static final int CORRECT_COUNT_TO_UNLOCK = 2;
+    private static final int CORRECT_COUNT_TO_UNLOCK = 3;
 
     // =========================================================================
     // ★ DEVELOPER SETTINGS
     // =========================================================================
 
     /** How many arrays the player must solve before victory. */
-    private static final int ARRAYS_TO_WIN = 1;
+    private static final int ARRAYS_TO_WIN = 2;
 
     /**
      * How much health the player loses on a wrong move (a swap that increases
@@ -277,13 +277,13 @@ public class StageFive implements Initializable {
 
         // Store references so shake animations can target them
         playerBox = buildCharacterNode(
-                loadImage(IMG_PLAYER, CHAR_WIDTH, CHAR_HEIGHT, true), "PLAYER", true);
+                loadImage(IMG_PLAYER, CHAR_WIDTH, CHAR_HEIGHT, true), "KAI", true);
         AnchorPane.setLeftAnchor(playerBox,   80.0);
         AnchorPane.setBottomAnchor(playerBox, 40.0);
         battleArea.getChildren().add(playerBox);
 
         enemyBox = buildCharacterNode(
-                loadImage(IMG_ENEMY, CHAR_WIDTH, CHAR_HEIGHT, true), "ENEMY", false);
+                loadImage(IMG_ENEMY, CHAR_WIDTH, CHAR_HEIGHT, true), "THE ECLIPSE", false);
         AnchorPane.setRightAnchor(enemyBox,   80.0);
         AnchorPane.setBottomAnchor(enemyBox,  40.0);
         battleArea.getChildren().add(enemyBox);

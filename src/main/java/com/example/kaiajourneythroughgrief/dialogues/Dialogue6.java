@@ -18,8 +18,8 @@ public class Dialogue6 {
         return new DialogueConfig(
                 "Dialogue6",
                 "/com/example/kaiajourneythroughgrief/assets/dialogueScreen/dialogue6/background.png",
-                "",  // backgroundMusicPath - can be empty
-                0.2,  // Background music volume (lowered during dialogue)
+                "/com/example/kaiajourneythroughgrief/assets/stage4/bgmusic.mp3",  // backgroundMusicPath - can be empty
+                0.05,  // Background music volume (lowered during dialogue)
                 "Kai",
                 "/com/example/kaiajourneythroughgrief/assets/dialogueScreen/dialogue6/left.png",
                 "The Mermaid",
@@ -85,7 +85,7 @@ public class Dialogue6 {
                         "/com/example/kaiajourneythroughgrief/assets/dialogue/218.mp3"),
 
                 new DialogueLine(Speaker.LEFT, "Everyone eventually leaves. That's what this is. The ocean. The unending water. The feeling of being alone and no one is coming.",
-                        "/com/example/kaiajourneythroughgrief/assets/dialogue/219.mp3")
+                        "/com/example/kaiajourneythroughgrief/assets/dialogue/kai.mp3")
         );
     }
 }

@@ -148,6 +148,8 @@ public class DialogueScreen extends StackPane {
         HBox characterContainer = new HBox(80, leftVisual, rightVisual);
         characterContainer.setAlignment(Pos.CENTER);
         characterContainer.setPadding(new Insets(20, 0, 20, 0));
+        characterContainer.setMaxWidth(Double.MAX_VALUE);
+        characterContainer.setPrefWidth(Double.MAX_VALUE);
 
         // Dialogue box background - card background color, expanded to fill bottom
         Rectangle dialogueBackground = new Rectangle();
@@ -182,7 +184,6 @@ public class DialogueScreen extends StackPane {
         captionContent.setAlignment(Pos.CENTER_LEFT);
         captionContent.setPadding(new Insets(24));
         captionContent.setStyle("-fx-background-color: transparent;");
-        // FIX: Set fixed width to prevent layout shift
         captionContent.maxWidthProperty().bind(this.widthProperty());
         captionContent.minWidthProperty().bind(this.widthProperty());
         HBox.setHgrow(dialogueText, Priority.ALWAYS);
@@ -202,6 +203,8 @@ public class DialogueScreen extends StackPane {
         // Root StackPane: backgrounds behind, content on top
         StackPane root = new StackPane(backgroundPlaceholder, backgroundImage, contentLayout);
         root.setStyle("-fx-background-color: #07070F;");
+        root.maxWidthProperty().bind(this.widthProperty());
+        root.maxHeightProperty().bind(this.heightProperty());
         this.getChildren().add(root);
 
         dialogueBox.setOnMouseClicked(event -> advanceDialogue());

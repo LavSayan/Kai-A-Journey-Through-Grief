@@ -268,13 +268,13 @@ public class StageTwo implements Initializable {
 
         // Store references so shake animations can target them
         playerBox = buildCharacterNode(
-                loadImage(IMG_PLAYER, CHAR_WIDTH, CHAR_HEIGHT, true), "PLAYER", true);
+                loadImage(IMG_PLAYER, CHAR_WIDTH, CHAR_HEIGHT, true), "KAI", true);
         AnchorPane.setLeftAnchor(playerBox,   80.0);
         AnchorPane.setBottomAnchor(playerBox, 40.0);
         battleArea.getChildren().add(playerBox);
 
         enemyBox = buildCharacterNode(
-                loadImage(IMG_ENEMY, CHAR_WIDTH, CHAR_HEIGHT, true), "ENEMY", false);
+                loadImage(IMG_ENEMY, CHAR_WIDTH, CHAR_HEIGHT, true), "SHARD", false);
         AnchorPane.setRightAnchor(enemyBox,   80.0);
         AnchorPane.setBottomAnchor(enemyBox,  40.0);
         battleArea.getChildren().add(enemyBox);
