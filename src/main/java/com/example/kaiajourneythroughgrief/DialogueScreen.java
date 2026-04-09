@@ -12,6 +12,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -67,6 +68,14 @@ public class DialogueScreen extends StackPane {
     private static final Color ACTIVE_TEXT = Color.web("#D8D8EC");
     private static final Color ENEMY_TEXT = Color.web("#3A3A56");
     private static final Color COMPLETION_GREEN = Color.web("#00FF88");
+
+    // Layout constants for consistency
+    private static final double DIALOGUE_BOX_HEIGHT_PERCENT = 0.35;
+    private static final double CHARACTER_CONTAINER_PADDING = 20;
+    private static final double CHARACTER_SPACING = 80;
+    private static final double DIALOGUE_PADDING = 24;
+    private static final double SKIP_BUTTON_WIDTH = 60;
+    private static final double DIALOGUE_TEXT_MIN_HEIGHT = 50;
 
     public enum Speaker {
         LEFT, RIGHT, NARRATOR, NONE
@@ -145,16 +154,19 @@ public class DialogueScreen extends StackPane {
         // Glow effect for active speaker (unlocked node glow equivalent)
         activeGlow = new DropShadow(24, Color.rgb(255, 255, 255, 0.75));
 
-        HBox characterContainer = new HBox(80, leftVisual, rightVisual);
+        // Character container - fixed height to prevent scaling from affecting layout
+        HBox characterContainer = new HBox(CHARACTER_SPACING, leftVisual, rightVisual);
         characterContainer.setAlignment(Pos.CENTER);
-        characterContainer.setPadding(new Insets(20, 0, 20, 0));
+        characterContainer.setPadding(new Insets(CHARACTER_CONTAINER_PADDING, 0, CHARACTER_CONTAINER_PADDING, 0));
         characterContainer.setMaxWidth(Double.MAX_VALUE);
         characterContainer.setPrefWidth(Double.MAX_VALUE);
+        characterContainer.setStyle("-fx-background-color: transparent;");
 
-        // Dialogue box background - card background color, expanded to fill bottom
+        // Dialogue box - FIXED at bottom with exactly 35% height
+        // Create background rectangle bound to percentage height
         Rectangle dialogueBackground = new Rectangle();
         dialogueBackground.widthProperty().bind(this.widthProperty());
-        dialogueBackground.heightProperty().bind(this.heightProperty().multiply(0.35)); // Takes 35% of screen
+        dialogueBackground.heightProperty().bind(this.heightProperty().multiply(DIALOGUE_BOX_HEIGHT_PERCENT));
         dialogueBackground.setFill(CARD_BG);
         dialogueBackground.setArcWidth(0);
         dialogueBackground.setArcHeight(0);
@@ -168,37 +180,55 @@ public class DialogueScreen extends StackPane {
         dialogueBackground.setEffect(dialogueShadow);
 
         // Dialogue text - Georgia for narrative content
+        // FIXED: Set explicit minimum height to prevent resizing
         dialogueText = new Label("Click to begin...");
         dialogueText.setTextFill(ACTIVE_TEXT);
         dialogueText.setWrapText(true);
         dialogueText.setMaxWidth(900);
+        dialogueText.setMinHeight(DIALOGUE_TEXT_MIN_HEIGHT);
         dialogueText.setFont(Font.font("Georgia", FontPosture.ITALIC, 18));
         dialogueText.setLineSpacing(3);
 
-        // Skip button
+        // Skip button - FIXED width to prevent position shifts
         Button skipButton = createSkipButton();
-        skipButton.setMinWidth(60);
-        skipButton.setPrefWidth(60);
+        skipButton.setMinWidth(SKIP_BUTTON_WIDTH);
+        skipButton.setPrefWidth(SKIP_BUTTON_WIDTH);
+        skipButton.setMaxWidth(SKIP_BUTTON_WIDTH);
 
+        // Content container - maintains consistent spacing
         HBox captionContent = new HBox(12, skipButton, dialogueText);
         captionContent.setAlignment(Pos.CENTER_LEFT);
-        captionContent.setPadding(new Insets(24));
+        captionContent.setPadding(new Insets(DIALOGUE_PADDING));
         captionContent.setStyle("-fx-background-color: transparent;");
         captionContent.maxWidthProperty().bind(this.widthProperty());
         captionContent.minWidthProperty().bind(this.widthProperty());
+        captionContent.setMaxHeight(Double.MAX_VALUE);
         HBox.setHgrow(dialogueText, Priority.ALWAYS);
 
+        // Dialogue box - positioned at BOTTOM_CENTER with fixed height
         dialogueBox = new StackPane(dialogueBackground, captionContent);
-        dialogueBox.setAlignment(Pos.CENTER_LEFT); // FIX: Changed from CENTER to CENTER_LEFT
+        dialogueBox.setAlignment(Pos.CENTER_LEFT); // Text alignment within box
         dialogueBox.setStyle("-fx-background-color: transparent;");
-        VBox.setVgrow(dialogueBox, Priority.ALWAYS);
+        dialogueBox.setMinHeight(Region.USE_COMPUTED_SIZE);
+        dialogueBox.setPrefHeight(Region.USE_COMPUTED_SIZE);
+        dialogueBox.setMaxHeight(Region.USE_COMPUTED_SIZE);
+        // Bind dialogue box height to percentage of parent
+        dialogueBox.minHeightProperty().bind(this.heightProperty().multiply(DIALOGUE_BOX_HEIGHT_PERCENT));
+        dialogueBox.prefHeightProperty().bind(this.heightProperty().multiply(DIALOGUE_BOX_HEIGHT_PERCENT));
+        dialogueBox.maxHeightProperty().bind(this.heightProperty().multiply(DIALOGUE_BOX_HEIGHT_PERCENT));
 
-        // Main content layout: Characters at top, dialogue box expands below
-        VBox contentLayout = new VBox(0, characterContainer, dialogueBox);
+        // Main content layout - separator for character and dialogue areas
+        // Character area grows to fill available space, dialogue box stays fixed at bottom
+        VBox contentLayout = new VBox(0);
         contentLayout.setStyle("-fx-background-color: transparent;");
         contentLayout.maxWidthProperty().bind(this.widthProperty());
         contentLayout.minWidthProperty().bind(this.widthProperty());
-        VBox.setVgrow(dialogueBox, Priority.ALWAYS);
+
+        // Spacer region to push characters to top and dialogue to bottom
+        Region spacer = new Region();
+        contentLayout.getChildren().addAll(characterContainer, spacer, dialogueBox);
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+        VBox.setVgrow(dialogueBox, Priority.NEVER); // Dialogue box maintains fixed height
 
         // Root StackPane: backgrounds behind, content on top
         StackPane root = new StackPane(backgroundPlaceholder, backgroundImage, contentLayout);
@@ -331,6 +361,7 @@ public class DialogueScreen extends StackPane {
             FadeTransition fadeOut = new FadeTransition(Duration.millis(300), becomingSilent);
             fadeOut.setToValue(0.35); // Inactive opacity
 
+            // Scale transition does NOT affect layout bounds
             ScaleTransition scaleDown = new ScaleTransition(Duration.millis(300), becomingSilent);
             scaleDown.setToX(0.95);
             scaleDown.setToY(0.95);

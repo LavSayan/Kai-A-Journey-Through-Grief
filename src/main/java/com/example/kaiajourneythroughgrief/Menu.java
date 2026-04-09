@@ -11,7 +11,7 @@ import javafx.scene.control.Label;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.effect.GaussianBlur;
 import javafx.scene.layout.Pane;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.paint.*;
 import javafx.scene.shape.*;
 import javafx.scene.text.*;
@@ -51,6 +51,9 @@ public class Menu implements Initializable {
             "#ADD8E6", "#DC143C", "#DAA520", "#6A2FBF", "#FFD700"
     };
 
+    // Container for dialogue screens (necessary for proper layout)
+    private StackPane dialogueContainer;
+
     // =========================================================================
     // INIT
     // =========================================================================
@@ -66,6 +69,22 @@ public class Menu implements Initializable {
         drawTitle();
         drawMenuButtons();
         drawVersionTag();
+
+        // Initialize dialogue container
+        setupDialogueContainer();
+    }
+
+    /**
+     * Create a StackPane container for DialogueScreen overlays.
+     * This ensures DialogueScreen (which is a StackPane) is properly laid out.
+     */
+    private void setupDialogueContainer() {
+        dialogueContainer = new StackPane();
+        dialogueContainer.setPrefSize(W, H);
+        dialogueContainer.setMaxSize(W, H);
+        dialogueContainer.setStyle("-fx-background-color: transparent;");
+        dialogueContainer.setMouseTransparent(true); // Transparent to clicks when empty
+        canvas.getChildren().add(dialogueContainer);
     }
 
     // =========================================================================
@@ -374,7 +393,7 @@ public class Menu implements Initializable {
 
         // Card
         double cardW = 440;
-        VBox card = new VBox(16);
+        javafx.scene.layout.VBox card = new javafx.scene.layout.VBox(16);
         card.setAlignment(Pos.CENTER);
         card.setMaxWidth(cardW);
         card.setPrefWidth(cardW);
@@ -416,7 +435,7 @@ public class Menu implements Initializable {
         Button startFreshBtn   = makeWarningButton("▶  START FRESH",   warningColor, true);
         Button keepProgressBtn = makeWarningButton("←  KEEP PROGRESS", "#3A3A56",    false);
 
-        VBox btnRow = new VBox(10, startFreshBtn, keepProgressBtn);
+        javafx.scene.layout.VBox btnRow = new javafx.scene.layout.VBox(10, startFreshBtn, keepProgressBtn);
         btnRow.setAlignment(Pos.CENTER);
 
         card.getChildren().addAll(eyebrow, titleLbl, divider, msgLbl, btnRow);
@@ -471,29 +490,53 @@ public class Menu implements Initializable {
         playDialogueSequence(sequence, 0);
     }
 
+    /**
+     * Play a sequence of DialogueScreen instances in order.
+     * When each dialogue completes, the next one plays automatically.
+     * After all dialogues finish, navigates to the level screen.
+     *
+     * CRITICAL FIXES:
+     * 1. DialogueScreen is added to dialogueContainer (StackPane), NOT directly to canvas (Pane)
+     * 2. DialogueScreen is sized to match canvas dimensions (W x H)
+     * 3. dialogueContainer.setMouseTransparent(true) when empty, preventing click blocking
+     * 4. Upon completion, DialogueScreen is removed and next one is added
+     * 5. All dialogue transitions are managed through the callback
+     */
     private void playDialogueSequence(List<DialogueConfig> sequence, int index) {
         // If we've played all dialogues, navigate to the game
         if (index >= sequence.size()) {
+            // Clear container and go to next screen
+            dialogueContainer.getChildren().clear();
             navigateTo("level_screen.fxml");
             return;
         }
 
         try {
-            // Create the current dialogue screen
+            // Create the current dialogue screen with explicit sizing
             DialogueScreen currentDialogue = new DialogueScreen(
                     sequence.get(index),
                     () -> {
-                        // ON FINISH: Remove current and play the next index
-                        canvas.getChildren().removeIf(node -> node instanceof DialogueScreen);
+                        // ON FINISH: Remove current dialogue and play next
+                        dialogueContainer.getChildren().clear();
                         playDialogueSequence(sequence, index + 1);
                     }
             );
 
+            // CRITICAL: Set explicit dimensions matching the canvas
             currentDialogue.setPrefSize(W, H);
-            canvas.getChildren().add(currentDialogue);
+            currentDialogue.setMinSize(W, H);
+            currentDialogue.setMaxSize(W, H);
+
+            // Make container accept mouse events when dialogue is present
+            dialogueContainer.setMouseTransparent(false);
+
+            // Add to dialogueContainer (StackPane), NOT canvas (Pane)
+            dialogueContainer.getChildren().add(currentDialogue);
 
         } catch (Exception ex) {
             System.err.println("[Menu] Dialogue sequence failed at index " + index + ": " + ex.getMessage());
+            ex.printStackTrace();
+            dialogueContainer.getChildren().clear();
             navigateTo("level_screen.fxml");
         }
     }

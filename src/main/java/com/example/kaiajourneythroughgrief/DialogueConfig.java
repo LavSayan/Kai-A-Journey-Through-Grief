@@ -2,10 +2,6 @@ package com.example.kaiajourneythroughgrief;
 
 import java.util.List;
 
-/**
- * Configuration class for dialogue scenes.
- * Separates dialogue content, audio, and scene setup from the UI logic.
- */
 public class DialogueConfig {
 
     private final String sceneName;

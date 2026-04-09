@@ -11,8 +11,8 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.13.0</version>
         <configuration>
-          <source>24</source>
-          <target>24</target>
+          <source>21</source>
+          <target>21</target>
         </configuration>
       </plugin>
       <plugin>
@@ -42,13 +42,17 @@
           <execution>
             <id>default-cli</id>
             <configuration>
-              <mainClass>com.example.kaiajourneythroughgrief/com.example.kaiajourneythroughgrief.HelloApplication</mainClass>
+              <mainClass>com.example.kaiajourneythroughgrief/com.example.kaiajourneythroughgrief.Main</mainClass>
               <launcher>app</launcher>
               <jlinkZipName>app</jlinkZipName>
               <jlinkImageName>app</jlinkImageName>
               <noManPages>true</noManPages>
               <stripDebug>true</stripDebug>
               <noHeaderFiles>true</noHeaderFiles>
+              <options>
+                <option>--add-modules</option>
+                <option>javafx.controls,javafx.fxml,javafx.media</option>
+              </options>
             </configuration>
           </execution>
         </executions>
