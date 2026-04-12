@@ -25,7 +25,7 @@ set MODULEPATH=!JAVAFX_HOME!\openjfx\javafx-base\21.0.6\javafx-base-21.0.6-win.j
 set MODULEPATH=!MODULEPATH!;!JAVAFX_HOME!\openjfx\javafx-graphics\21.0.6\javafx-graphics-21.0.6-win.jar
 set MODULEPATH=!MODULEPATH!;!JAVAFX_HOME!\openjfx\javafx-controls\21.0.6\javafx-controls-21.0.6-win.jar
 set MODULEPATH=!MODULEPATH!;!JAVAFX_HOME!\openjfx\javafx-fxml\21.0.6\javafx-fxml-21.0.6-win.jar
-set MODULEPATH=!MODULEPATH!;!JAVAFX_HOME!\openjfx\javafx-media\17.0.6\javafx-media-17.0.6-win.jar
+set MODULEPATH=!MODULEPATH!;!JAVAFX_HOME!\openjfx\javafx-media\21.0.6\javafx-media-21.0.6-win.jar
 
 REM Launch the application
 !JAVA_EXE! --module-path "!MODULEPATH!" --add-modules javafx.controls,javafx.fxml,javafx.media -cp "!CLASSPATH!" com.example.kaiajourneythroughgrief.Main
