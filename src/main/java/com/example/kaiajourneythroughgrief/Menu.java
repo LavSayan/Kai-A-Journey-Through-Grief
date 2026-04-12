@@ -17,8 +17,9 @@ import javafx.scene.shape.*;
 import javafx.scene.text.*;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import javafx.scene.control.Slider;
 
-// Import your dialogue class
+
 import com.example.kaiajourneythroughgrief.dialogues.Dialogue1;
 import com.example.kaiajourneythroughgrief.dialogues.Dialogue2;
 
@@ -267,6 +268,10 @@ public class Menu implements Initializable {
         // QUIT — always active
         buildMenuButton("QUIT", "✕", "#AF0000", "quit",
                 W / 2.0, startY + gap * 2, 240, true);
+
+        double settingsX = W - 80;
+        double settingsY = H - 50;
+        buildSettingsButton(settingsX, settingsY);
     }
 
     /**
@@ -345,6 +350,225 @@ public class Menu implements Initializable {
         ft.setFromValue(0.0);
         ft.setToValue(1.0);
         ft.play();
+    }
+
+    // ======================================================================
+    // SECTION: SETTINGS BUTTON
+    // ======================================================================
+
+    /**
+     * Builds a compact settings button in the bottom-right corner.
+     * Positioned at (settingsX, settingsY).
+     */
+
+    private void buildSettingsButton(double settingsX, double settingsY) {
+        double btnW = 50;
+        double btnH = 40;
+
+        Rectangle bg = new Rectangle(settingsX, settingsY, btnW, btnH);
+        bg.setArcWidth(4);
+        bg.setArcHeight(4);
+        bg.setFill(Color.web(C_TITLE_BAR, 0.85));
+        bg.setStroke(Color.web(C_BAND_DIV, 0.8));
+        bg.setStrokeWidth(1);
+
+        Label settingsIcon = new Label("🔊");
+        settingsIcon.setFont(Font.font("Georgia", 20));
+        settingsIcon.setTextFill(Color.web(C_ACCENT_GOLD, 0.85));
+        settingsIcon.setLayoutX(settingsX + 10);
+        settingsIcon.setLayoutY(settingsY + 8);
+
+        Rectangle hitArea = new Rectangle(settingsX, settingsY, btnW, btnH);
+        hitArea.setFill(Color.TRANSPARENT);
+        hitArea.setStyle("-fx-cursor: hand;");
+
+        hitArea.setOnMouseEntered(e -> {
+            bg.setFill(Color.web(C_BAND_DIV, 0.95));
+            bg.setStroke(Color.web(C_ACCENT_GOLD, 0.6));
+            settingsIcon.setTextFill(Color.web(C_ACCENT_GOLD));
+        });
+
+        hitArea.setOnMouseExited(e -> {
+            bg.setFill(Color.web(C_TITLE_BAR, 0.85));
+            bg.setStroke(Color.web(C_BAND_DIV, 0.8));
+            settingsIcon.setTextFill(Color.web(C_ACCENT_GOLD, 0.85));
+        });
+
+        hitArea.setOnMouseClicked(e -> showAudioSettingsDialog());
+
+        canvas.getChildren().addAll(bg, settingsIcon, hitArea);
+    }
+
+// ======================================================================
+// SECTION: AUDIO SETTINGS DIALOG
+// ======================================================================
+
+    /**
+     * Shows a modal audio settings dialog with volume control.
+     * Includes:
+     *   - Master Volume slider (0–100%)
+     *   - OK and Cancel buttons
+     */
+    private void showAudioSettingsDialog() {
+        String dialogColor = C_ACCENT_GOLD;
+
+        // Full-screen backdrop
+        Rectangle backdrop = new Rectangle(W, H);
+        backdrop.setFill(Color.web("#000000", 0.82));
+
+        // Ambient glow
+        Circle orb = new Circle(W / 2, H / 2, 280);
+        orb.setFill(Color.web(dialogColor, 0.05));
+        orb.setEffect(new GaussianBlur(80));
+
+        // Dialog card
+        double dialogW = 420;
+        javafx.scene.layout.VBox card = new javafx.scene.layout.VBox(20);
+        card.setAlignment(Pos.CENTER);
+        card.setMaxWidth(dialogW);
+        card.setPrefWidth(dialogW);
+        card.setStyle(
+                "-fx-background-color: #07070E;" +
+                        "-fx-border-color: " + dialogColor + ";" +
+                        "-fx-border-width: 1;" +
+                        "-fx-border-radius: 6;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-padding: 40 44 36 44;"
+        );
+        card.setEffect(new DropShadow(40, Color.web(dialogColor, 0.45)));
+
+        // ── Header ────────────────────────────────────────────────────────
+        Label eyebrow = new Label("AUDIO");
+        eyebrow.setFont(Font.font("Courier New", FontWeight.BOLD, 9));
+        eyebrow.setTextFill(Color.web(dialogColor, 0.7));
+        eyebrow.setStyle("-fx-letter-spacing: 3;");
+
+        Label titleLbl = new Label("Volume Settings");
+        titleLbl.setFont(Font.font("Georgia", FontWeight.BOLD, 28));
+        titleLbl.setTextFill(Color.web("#D8D8EC"));
+        titleLbl.setEffect(new DropShadow(12, Color.web("#000000", 0.9)));
+
+        Rectangle divider1 = new Rectangle(dialogW - 88, 1);
+        divider1.setFill(Color.web(dialogColor, 0.3));
+
+        // ── Volume Control ────────────────────────────────────────────────
+        Label volumeLabel = new Label("Master Volume");
+        volumeLabel.setFont(Font.font("Georgia", FontPosture.ITALIC, 12));
+        volumeLabel.setTextFill(Color.web("#D8D8EC"));
+
+        // Get current volume
+        double currentVolume = MusicPlayer.getInstance().getVolume();
+
+        // Volume slider
+        Slider volumeSlider = new Slider(0, 1.0, currentVolume);
+        volumeSlider.setShowTickLabels(false);
+        volumeSlider.setShowTickMarks(false);
+        volumeSlider.setStyle(
+                "-fx-control-inner-background: #161624;" +
+                        "-fx-track-color: #161624;" +
+                        "-fx-thumb-fill: " + dialogColor + ";"
+        );
+        volumeSlider.setPrefWidth(300);
+
+        // Volume percentage display
+        Label volumePercentLabel = new Label((int)(currentVolume * 100) + "%");
+        volumePercentLabel.setFont(Font.font("Courier New", FontWeight.BOLD, 10));
+        volumePercentLabel.setTextFill(Color.web(dialogColor, 0.85));
+
+        volumeSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
+            volumePercentLabel.setText((int)(newVal.doubleValue() * 100) + "%");
+        });
+
+        javafx.scene.layout.HBox volumeRow = new javafx.scene.layout.HBox(12, volumeSlider, volumePercentLabel);
+        volumeRow.setAlignment(Pos.CENTER_LEFT);
+
+        // ── Action Buttons ────────────────────────────────────────────────
+        Rectangle divider2 = new Rectangle(dialogW - 88, 1);
+        divider2.setFill(Color.web(dialogColor, 0.2));
+
+        Button okBtn = makeSettingsButton("✓  APPLY", dialogColor, true);
+        Button cancelBtn = makeSettingsButton("✕  CANCEL", "#3A3A56", false);
+
+        javafx.scene.layout.VBox btnRow = new javafx.scene.layout.VBox(10, okBtn, cancelBtn);
+        btnRow.setAlignment(Pos.CENTER);
+
+        // ── Assemble card ─────────────────────────────────────────────────
+        card.getChildren().addAll(
+                eyebrow, titleLbl, divider1,
+                volumeLabel, volumeRow,
+                divider2,
+                btnRow
+        );
+
+        card.setLayoutX(W / 2 - dialogW / 2);
+        card.setLayoutY(0);
+
+        // ── Position card vertically ──────────────────────────────────────
+        Pane overlay = new Pane(backdrop, orb, card);
+        card.layoutBoundsProperty().addListener((obs, oldB, newB) -> {
+            if (newB.getHeight() > 0) card.setLayoutY((H - newB.getHeight()) / 2.0);
+        });
+        canvas.getChildren().add(overlay);
+
+        // ── Fade in ───────────────────────────────────────────────────────
+        overlay.setOpacity(0);
+        FadeTransition fadeIn = new FadeTransition(Duration.millis(280), overlay);
+        fadeIn.setFromValue(0.0);
+        fadeIn.setToValue(1.0);
+        fadeIn.play();
+
+        // ── Button Actions ────────────────────────────────────────────────
+        okBtn.setOnAction(e -> {
+            // Apply volume setting
+            MusicPlayer.getInstance().setVolume(volumeSlider.getValue());
+
+            // Fade out and remove
+            FadeTransition fadeOut = new FadeTransition(Duration.millis(200), overlay);
+            fadeOut.setToValue(0.0);
+            fadeOut.setOnFinished(ev -> canvas.getChildren().remove(overlay));
+            fadeOut.play();
+        });
+
+        cancelBtn.setOnAction(e -> {
+            FadeTransition fadeOut = new FadeTransition(Duration.millis(200), overlay);
+            fadeOut.setToValue(0.0);
+            fadeOut.setOnFinished(ev -> canvas.getChildren().remove(overlay));
+            fadeOut.play();
+        });
+
+        // Backdrop click also cancels
+        backdrop.setOnMouseClicked(e -> cancelBtn.fire());
+        card.setOnMouseClicked(e -> e.consume());
+    }
+
+    /**
+     * Creates a styled button for the settings dialog.
+     */
+    private Button makeSettingsButton(String label, String colorHex, boolean isPrimary) {
+        Button btn = new Button(label);
+        btn.setFont(Font.font("Courier New", FontWeight.BOLD, 11));
+        btn.setTextFill(Color.web(isPrimary ? colorHex : "#3A3A56"));
+        btn.setPrefWidth(200);
+
+        String base  = "-fx-background-color: transparent;" +
+                "-fx-border-color: " + colorHex + ";" +
+                "-fx-border-width: 1;-fx-border-radius: 4;" +
+                "-fx-padding: 10 0;-fx-cursor: hand;";
+        String hover = "-fx-background-color: " + colorHex + "22;" +
+                "-fx-border-color: " + colorHex + ";" +
+                "-fx-border-width: 1;-fx-border-radius: 4;" +
+                "-fx-padding: 10 0;-fx-cursor: hand;";
+
+        btn.setStyle(base);
+        btn.setOnMouseEntered(e -> {
+            btn.setStyle(hover);
+            btn.setTextFill(Color.web(isPrimary ? "#FFFFFF" : colorHex));
+        });
+        btn.setOnMouseExited(e -> {
+            btn.setStyle(base);
+            btn.setTextFill(Color.web(isPrimary ? colorHex : "#3A3A56"));
+        });
+        return btn;
     }
 
     // =========================================================================

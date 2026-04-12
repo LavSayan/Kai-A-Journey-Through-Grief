@@ -33,20 +33,20 @@ public class Dialogue8 {
                 new DialogueLine(Speaker.NARRATOR, "As the garden's sunlight grows overwhelming, Kai feels her body growing heavy, but it's different from before. Before, she felt weighed down. Now, she feels... grounded. Solid. Present.",
                         "/com/example/kaiajourneythroughgrief/assets/dialogue/257.mp3"),
 
-                new DialogueLine(Speaker.NARRATOR, "She wakes at her desk, 3:07 AM, only seven minutes have passed. The textbook is still open to the same page. But everything feels different. The grief isn't gone - she knows it never will be - but it's no longer crushing her. It's part of her now, integrated, carried.",
+                new DialogueLine(Speaker.NARRATOR, "She wakes at her desk, 3:28 AM, only seven minutes have passed. The textbook is still open to the same page. But everything feels different. The grief isn't gone - she knows it never will be - but it's no longer crushing her. It's part of her now, integrated, carried.",
                         "/com/example/kaiajourneythroughgrief/assets/dialogue/258.mp3"),
 
                 new DialogueLine(Speaker.NARRATOR, "A soft knock at her door. Gentle. Hesitant.",
                         "/com/example/kaiajourneythroughgrief/assets/dialogue/259.mp3"),
 
                 new DialogueLine(Speaker.RIGHT, "Don't study too late, sweetheart. Love you.",
-                        "/com/example/kaiajourneythroughgrief/assets/dialogue/kai.mp3"),
+                        "/com/example/kaiajourneythroughgrief/assets/dialogue/260.mp3"),
 
                 new DialogueLine(Speaker.NARRATOR, "For the first time in three months, KAI answers..",
                         "/com/example/kaiajourneythroughgrief/assets/dialogue/261.mp3"),
 
                 new DialogueLine(Speaker.LEFT, "Love you too, Grandma.",
-                        "/com/example/kaiajourneythroughgrief/assets/dialogue/kai.mp3"),
+                        "/com/example/kaiajourneythroughgrief/assets/dialogue/262.mp3"),
 
                 new DialogueLine(Speaker.NARRATOR, "A pause. Then, softly, her grandmother's footsteps retreating down the hall.",
                         "/com/example/kaiajourneythroughgrief/assets/dialogue/263.mp3"),

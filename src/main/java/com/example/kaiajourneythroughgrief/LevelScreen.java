@@ -91,20 +91,20 @@ public class LevelScreen implements Initializable {
 
     private static final Object[][] STAGES = {
             { "stage1", "I",   "The Forest Frozen in Fog",    "DENIAL",
-                    "#ADD8E6", "#1A4A5A", "Enemy1",
-                    "Description1" },
+                    "#ADD8E6", "#1A4A5A", "Ouroboro",
+                    "Kai must break free from Ouroboro, the serpent of stillness who has kept her coiled in the moment before her parents died. " },
             { "stage2", "II",  "The City of Shattered Glass", "ANGER",
-                    "#DC143C", "#5A0010", "Enemy2",
-                    "Description2" },
+                    "#DC143C", "#5A0010", "Shard",
+                    "Kai must face Shard, the fractured reflection of herself that carries all the rage she has buried for months." },
             { "stage3", "III", "The Temple of Endless Doors", "BARGAINING",
-                    "#DAA520", "#5A4000", "Enemy3",
-                    "Description3" },
+                    "#DAA520", "#5A4000", "The Door",
+                    "Kai must stop opening door after door for The Door, accepting that no version of the past will ever bring her parents back." },
             { "stage4", "IV",  "The Ocean of Still Water",    "DEPRESSION",
-                    "#6A2FBF", "#18002E", "Enemy4",
-                    "Description4" },
+                    "#6A2FBF", "#18002E", "The Mermaid",
+                    "Kai must sit with The Mermaid in the vast, endless water and learn that grief does not drown you—it simply stays." },
             { "stage5", "V",   "The Garden at Dawn",          "ACCEPTANCE",
-                    "#FFD700", "#5A4400", "Enemy5",
-                    "Description5" },
+                    "#FFD700", "#5A4400", "The Eclipse",
+                    "Kai must resist The Eclipse, the pull of negative thoughts trying to consume her, and choose to carry her grief forward instead of being swallowed by it." },
     };
 
     // ── Guard: prevents double-clicking during a transition ────────────────
@@ -412,7 +412,7 @@ public class LevelScreen implements Initializable {
         divider.setFill(Color.web(colorHex, 0.3));
 
         // Enemy eyebrow — Courier New
-        Label enemyEyebrow = new Label("ENEMIES");
+        Label enemyEyebrow = new Label("ENEMY");
         enemyEyebrow.setFont(Font.font("Courier New", FontWeight.BOLD, 8));
         enemyEyebrow.setTextFill(Color.web("#3A3A56"));
         enemyEyebrow.setStyle("-fx-letter-spacing: 2;");

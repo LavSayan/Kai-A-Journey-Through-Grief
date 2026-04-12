@@ -85,7 +85,7 @@ public class Dialogue6 {
                         "/com/example/kaiajourneythroughgrief/assets/dialogue/218.mp3"),
 
                 new DialogueLine(Speaker.LEFT, "Everyone eventually leaves. That's what this is. The ocean. The unending water. The feeling of being alone and no one is coming.",
-                        "/com/example/kaiajourneythroughgrief/assets/dialogue/kai.mp3")
+                        "/com/example/kaiajourneythroughgrief/assets/dialogue/219.mp3")
         );
     }
 }
