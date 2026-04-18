@@ -4,16 +4,15 @@ A contemplative interactive narrative experience built with Java and JavaFX. Gui
 
 ## Overview
 
-**Kai - A Journey Through Grief** is an interactive game that explores the emotional landscape of loss through a structured narrative. Players progress through multiple stages, each representing different aspects of the grieving process, enhanced by dialogue interactions, environmental storytelling, and an original musical score.
+**Kai - A Journey Through Grief** is an interactive game that explores the emotional landscape of loss through a structured narrative. Players progress through multiple stages, each representing different aspects of the grieving process, enhanced by dialogue interactions, environmental storytelling, and an musical score.
 
 ### Key Features
 
 - **5 Distinctive Stages**: Each stage represents a different phase of the emotional journey
 - **8 Interactive Dialogues**: Deeply written conversations that advance the narrative
-- **Dynamic Dialogue System**: Choice-driven interactions powered by Jackson JSON parsing
-- **Atmospheric Music**: Full background score that complements each stage
+- **Music**: Full background score that complements each stage
 - **Save/Load System**: Resume your journey at any time
-- **Beautiful UI**: Hand-crafted JavaFX interface with animations and visual effects
+- **UI**: JavaFX interface with animations and visual effects
 
 ### System Architecture
 
