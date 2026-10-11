@@ -118,10 +118,10 @@ public class Dialogue5 {
                         "/com/example/kaiajourneythroughgrief/assets/dialogue/167.mp3"),
 
                 new DialogueLine(Speaker.LEFT, "You don't know that.",
-                        "/com/example/kaiajourneythroughgrief/assets/dialogue/168.mp3"),
+                        "/com/example/kaiajourneythroughgrief/assets/dialogue/169(1).mp3"),
 
                 new DialogueLine(Speaker.RIGHT, "You already know it. You always have. That is why you keep opening each door. Not because you believe you will find one that will change anything, but because closing the last door would mean accepting there are no more questions left to ask.",
-                        "/com/example/kaiajourneythroughgrief/assets/dialogue/169.mp3"),
+                        "/com/example/kaiajourneythroughgrief/assets/dialogue/169(2).mp3"),
 
                 new DialogueLine(Speaker.LEFT, "Is there anything wrong with asking questions?",
                         "/com/example/kaiajourneythroughgrief/assets/dialogue/170.mp3"),
