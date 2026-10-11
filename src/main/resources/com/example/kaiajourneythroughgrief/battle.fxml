@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.AnchorPane?>
+
+<!--
+    Shared battle layout for every stage.
+
+    There is no fx:controller here on purpose: BattleScene.createScene(config)
+    installs a BattleController that already knows which StageConfig it is
+    playing. Everything below is styled by BattleSceneView in code.
+-->
+<BorderPane
+        xmlns="http://javafx.com/javafx"
+        xmlns:fx="http://javafx.com/fxml"
+        style="-fx-background-color: #07070F;"
+        prefWidth="1000" prefHeight="650">
+
+    <!-- ===== TOP: title bar, rebuilt entirely by BattleSceneView ===== -->
+    <top>
+        <StackPane fx:id="topPanel" style="-fx-background-color: #050510;"/>
+    </top>
+
+    <!-- ===== CENTER: battlefield — background, sprites, vitality bar ===== -->
+    <center>
+        <AnchorPane fx:id="battleArea" style="-fx-background-color: #07070F;"/>
+    </center>
+
+    <!-- ===== BOTTOM: the sorting board canvas ===== -->
+    <bottom>
+        <StackPane
+                fx:id="bottomPanel"
+                prefHeight="160"
+                style="-fx-background-color: #050510; -fx-border-color: #1C1C30; -fx-border-width: 1 0 0 0;"/>
+    </bottom>
+
+</BorderPane>
