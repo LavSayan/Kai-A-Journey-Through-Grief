@@ -9,5 +9,8 @@ module com.example.kaiajourneythroughgrief {
 
 
     opens com.example.kaiajourneythroughgrief to javafx.fxml;
+    // BattleController is installed programmatically by BattleScene.createScene,
+    // so FXMLLoader still needs reflective access to its @FXML fields.
+    opens com.example.kaiajourneythroughgrief.battle to javafx.fxml;
     exports com.example.kaiajourneythroughgrief;
 }

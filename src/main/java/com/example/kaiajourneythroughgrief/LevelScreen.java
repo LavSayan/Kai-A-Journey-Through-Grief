@@ -36,6 +36,8 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 
 // ── IMPORT YOUR DIALOGUE CLASSES HERE ──────────────────────────────────
+import com.example.kaiajourneythroughgrief.battle.StageConfig;
+import com.example.kaiajourneythroughgrief.stages.StageCatalog;
 import com.example.kaiajourneythroughgrief.dialogues.Dialogue1;
 import com.example.kaiajourneythroughgrief.dialogues.Dialogue2;
 import com.example.kaiajourneythroughgrief.dialogues.Dialogue3;
@@ -61,15 +63,6 @@ public class LevelScreen implements Initializable {
     @FXML private Pane canvas;
 
     private Map<String, String> LEVEL_STATUS;
-
-    // ── Stage → FXML mapping ───────────────────────────────────────────────
-    private static final Map<String, String> STAGE_FXML = new LinkedHashMap<>() {{
-        put("stage1", "stage_one.fxml");
-        put("stage2", "stage_two.fxml");
-        put("stage3", "stage_three.fxml");
-        put("stage4", "stage_four.fxml");
-        put("stage5", "stage_five.fxml");
-    }};
 
     // ── Stage → Pre-Intro Dialogue mapping ────────────────────────────────
     // Maps stage IDs to their corresponding DialogueConfig suppliers
@@ -591,31 +584,24 @@ public class LevelScreen implements Initializable {
     // =========================================================================
 
     /**
-     * Loads the FXML for the given stage and replaces the scene.
+     * Builds the battle scene for the given stage and replaces the current one.
      * Only called after the fade-to-black completes (or dialogue finishes).
      */
     private void loadStage(String stageId) {
-        String fxmlFile = STAGE_FXML.get(stageId);
-        if (fxmlFile == null) {
-            System.err.println("[LevelScreen] No FXML mapped for: " + stageId);
+        StageConfig config = StageCatalog.get(stageId);
+        if (config == null) {
+            System.err.println("[LevelScreen] No config mapped for: " + stageId);
             transitioning = false;
             return;
         }
         try {
-            URL resource = getClass().getResource(fxmlFile);
-            if (resource == null) {
-                System.err.println("[LevelScreen] FXML not found: " + fxmlFile);
-                transitioning = false;
-                return;
-            }
             // Fade music out as we enter the battle stage
             MusicPlayer.getInstance().fadeOutAndStop(500);
 
-            FXMLLoader loader = new FXMLLoader(resource);
-            Scene scene = new Scene(loader.load());
+            Scene scene = BattleScene.createScene(config);
             ((Stage) canvas.getScene().getWindow()).setScene(scene);
         } catch (Exception e) {
-            System.err.println("[LevelScreen] Failed to load " + fxmlFile + ": " + e.getMessage());
+            System.err.println("[LevelScreen] Failed to load " + stageId + ": " + e.getMessage());
             transitioning = false;
         }
     }
